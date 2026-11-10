@@ -13,6 +13,7 @@ type KanbanColumn struct {
 	Name      string       `json:"name" gorm:"not null"`
 	Position  int          `json:"position" gorm:"not null"`
 	Cards     []KanbanCard `json:"cards,omitempty" gorm:"foreignKey:ColumnID"`
+	Color     string       `json:"color" gorm:"not null;default:'#3B82F6'"` // Cor padrão azul
 	CreatedAt time.Time    `json:"created_at" gorm:"autoCreateTime"`
 	UpdatedAt time.Time    `json:"updated_at" gorm:"autoUpdateTime"`
 }

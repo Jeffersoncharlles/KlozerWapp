@@ -22,6 +22,11 @@ type RouterHandlers struct {
 	QuickReply *handler.QuickReplyHandler
 	Tag        *handler.TagHandler
 	Session    *handler.SessionHandler
+	Flow       *handler.FlowHandler
+	Queue      *handler.QueueHandler
+	Report     *handler.ReportHandler
+	Campaign   *handler.CampaignHandler
+	Call       *handler.CallHandler
 }
 
 // Note que agora injetamos o tokenAuth (*jwtauth.JWTAuth) gerado pelo Wire
@@ -37,7 +42,7 @@ func NewRouter(h RouterHandlers, tokenAuth *jwtauth.JWTAuth) http.Handler {
 
 	// CORS para o frontend em React Router conseguir chamar a API
 	r.Use(cors.Handler(cors.Options{
-		AllowedOrigins:   []string{"http://localhost:5173", "http://localhost:3000"}, // Vite/Next
+		AllowedOrigins:   []string{"http://localhost:5173", "http://localhost:3002"}, // Vite/Next
 		AllowedMethods:   []string{"GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"},
 		AllowedHeaders:   []string{"Accept", "Authorization", "Content-Type"},
 		AllowCredentials: true,
@@ -66,6 +71,11 @@ func NewRouter(h RouterHandlers, tokenAuth *jwtauth.JWTAuth) http.Handler {
 			h.Message.RegisterRoutes(r)    // /v1/api/messages/*
 			h.QuickReply.RegisterRoutes(r) // /v1/api/quick-replies/*
 			h.Tag.RegisterRoutes(r)        // /v1/api/tags/*
+			h.Flow.RegisterRoutes(r)       // /v1/api/flows/*
+			h.Queue.RegisterRoutes(r)      // /v1/api/queues/*
+			h.Report.RegisterRoutes(r)     // /v1/api/reports/*
+			h.Campaign.RegisterRoutes(r)   // /v1/api/campaigns/*
+			h.Call.RegisterRoutes(r)       // /v1/api/calls/*
 		})
 
 		// 2.3 Rotas Restritas (Apenas ADMIN)

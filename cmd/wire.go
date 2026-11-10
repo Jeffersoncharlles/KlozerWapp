@@ -53,6 +53,11 @@ var RepositorySet = wire.NewSet(
 	sqlite.NewQuickReplyRepository,
 	sqlite.NewTagRepository,
 	sqlite.NewContactRepository,
+	sqlite.NewFlowRepository,
+	sqlite.NewQueueRepository,
+	sqlite.NewReportRepository,
+	sqlite.NewCampaignRepository,
+	sqlite.NewCallRepository,
 )
 
 var UseCaseSet = wire.NewSet(
@@ -64,6 +69,11 @@ var UseCaseSet = wire.NewSet(
 	usecase.NewAutoReplyUseCase,
 	usecase.NewContactUseCase,
 	usecase.NewTagUseCase,
+	usecase.NewFlowUseCase,
+	usecase.NewQueueUseCase,
+	usecase.NewReportUseCase,
+	usecase.NewCampaignUseCase,
+	usecase.NewCallUseCase,
 )
 
 var HandlerSet = wire.NewSet(
@@ -73,6 +83,11 @@ var HandlerSet = wire.NewSet(
 	handler.NewQuickReplyHandler,
 	handler.NewTagHandler,
 	handler.NewSessionHandler,
+	handler.NewFlowHandler,
+	handler.NewQueueHandler,
+	handler.NewReportHandler,
+	handler.NewCampaignHandler,
+	handler.NewCallHandler,
 	wire.Struct(new(deliveryHttp.RouterHandlers), "*"),
 )
 

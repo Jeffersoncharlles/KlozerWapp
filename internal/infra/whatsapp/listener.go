@@ -13,13 +13,15 @@ import (
 type WhatsAppListener struct {
 	client *whatsmeow.Client
 	chatUC domain.ChatUseCase
+	flowUC domain.FlowUseCase // <--- Adicionado
 }
 
 // O Google Wire chama isso e injeta o UseCase!
-func NewWhatsAppListener(client *whatsmeow.Client, chatUC domain.ChatUseCase) *WhatsAppListener {
+func NewWhatsAppListener(client *whatsmeow.Client, chatUC domain.ChatUseCase, flowUC domain.FlowUseCase) *WhatsAppListener {
 	listener := &WhatsAppListener{
 		client: client,
 		chatUC: chatUC,
+		flowUC: flowUC,
 	}
 
 	// Adiciona o gatilho de eventos no Whatsmeow
@@ -51,6 +53,11 @@ func (l *WhatsAppListener) eventHandler(evt interface{}) {
 			slog.Error("Erro ao processar mensagem recebida", "phone", phone, "err", err)
 		} else {
 			slog.Info("Mensagem recebida com sucesso", "phone", phone)
+		}
+
+		err = l.flowUC.ProcessIncomingMessage(ctx, phone, content)
+		if err != nil {
+			slog.Error("Erro ao processar fluxo do bot", "err", err)
 		}
 	}
 }
