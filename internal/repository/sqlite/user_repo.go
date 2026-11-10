@@ -83,3 +83,35 @@ func (r *userRepo) CountActiveUsers(ctx context.Context) (int64, error) {
 	}
 	return count, nil
 }
+
+func (r *userRepo) UpdateStatus(ctx context.Context, id string, isActive bool) error {
+	db, err := r.provider.GetDB(ctx)
+	if err != nil {
+		return err
+	}
+
+	result := db.Model(&domain.User{}).Where("id = ?", id).Update("is_active", isActive)
+	if result.Error != nil {
+		return result.Error
+	}
+	if result.RowsAffected == 0 {
+		return errors.New("usuário não encontrado")
+	}
+	return nil
+}
+
+func (r *userRepo) Update(ctx context.Context, user *domain.User) error {
+	db, err := r.provider.GetDB(ctx)
+	if err != nil {
+		return err
+	}
+
+	result := db.Model(&domain.User{}).Where("id = ?", user.ID).Updates(user)
+	if result.Error != nil {
+		return result.Error
+	}
+	if result.RowsAffected == 0 {
+		return errors.New("usuário não encontrado")
+	}
+	return nil
+}

@@ -4,6 +4,7 @@ import (
 	"context"
 	"log/slog"
 
+	"golang.org/x/crypto/bcrypt"
 	"gorm.io/driver/sqlite"
 	"gorm.io/gorm"
 
@@ -53,6 +54,8 @@ func NewGormProvider(cfg *config.Config) (repository.GormProvider, error) {
 
 	// Popula os dados iniciais caso o banco seja novo
 	seedDefaultKanbanColumns(db)
+	// 3. SEED: Cria o usuário padrão se o banco estiver vazio
+	seedDefaultUser(db)
 
 	return &singleTenantProvider{db: db}, nil
 }
@@ -77,6 +80,41 @@ func seedDefaultKanbanColumns(db *gorm.DB) {
 
 		for _, col := range defaultColumns {
 			db.Create(&col)
+		}
+	}
+}
+
+// seedDefaultUser verifica se existe algum usuário e injeta o Admin inicial
+func seedDefaultUser(db *gorm.DB) {
+	var count int64
+	db.Model(&domain.User{}).Count(&count)
+
+	// Se a contagem for 0, significa que é a primeira vez rodando o sistema
+	if count == 0 {
+		slog.Info("Nenhum usuário encontrado. Criando administrador padrão...")
+
+		// Gera o hash da senha padrão
+		hash, err := bcrypt.GenerateFromPassword([]byte("admin123"), bcrypt.DefaultCost)
+		if err != nil {
+			slog.Error("Erro ao gerar senha do usuário padrão", "err", err)
+			return
+		}
+
+		defaultUser := domain.User{
+			Name:         "Administrador Padrão",
+			Email:        "admin@admin.com", // E-mail padrão
+			PasswordHash: string(hash),      // Senha: admin123
+			Role:         "ADMIN",
+			IsActive:     true,
+		}
+
+		if err := db.Create(&defaultUser).Error; err != nil {
+			slog.Error("Erro ao criar usuário padrão", "err", err)
+		} else {
+			slog.Info("✅ Usuário padrão criado com sucesso!")
+			slog.Info("👉 E-mail: admin@admin.com")
+			slog.Info("👉 Senha: admin123")
+			slog.Warn("⚠️ IMPORTANTE: Altere esta senha e e-mail no primeiro login!")
 		}
 	}
 }
