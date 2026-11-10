@@ -13,18 +13,14 @@ import (
 type WhatsAppListener struct {
 	client *whatsmeow.Client
 	chatUC domain.ChatUseCase
-	flowUC domain.FlowUseCase // <--- Adicionado
 }
 
 // O Google Wire chama isso e injeta o UseCase!
-func NewWhatsAppListener(client *whatsmeow.Client, chatUC domain.ChatUseCase, flowUC domain.FlowUseCase) *WhatsAppListener {
+func NewWhatsAppListener(client *whatsmeow.Client, chatUC domain.ChatUseCase) *WhatsAppListener {
 	listener := &WhatsAppListener{
 		client: client,
 		chatUC: chatUC,
-		flowUC: flowUC,
 	}
-
-	// Adiciona o gatilho de eventos no Whatsmeow
 	client.AddEventHandler(listener.eventHandler)
 	return listener
 }
@@ -32,7 +28,7 @@ func NewWhatsAppListener(client *whatsmeow.Client, chatUC domain.ChatUseCase, fl
 func (l *WhatsAppListener) eventHandler(evt interface{}) {
 	switch v := evt.(type) {
 	case *events.Message:
-		// Ignora mensagens enviadas pelo próprio usuário em outro aparelho ou mensagens de grupos
+		// Ignora mensagens enviadas pelo próprio usuário ou de grupos
 		if v.Info.IsFromMe || v.Info.IsGroup {
 			return
 		}
@@ -40,7 +36,7 @@ func (l *WhatsAppListener) eventHandler(evt interface{}) {
 		phone := v.Info.Sender.User
 		content := v.Message.GetConversation() // Texto simples
 
-		// Se for mensagem de imagem, áudio ou template, precisaria de uma tratativa maior
+		// Tratativa básica para mídias
 		if content == "" {
 			content = "[Mídia Recebida]"
 		}
@@ -48,16 +44,13 @@ func (l *WhatsAppListener) eventHandler(evt interface{}) {
 		ctx := context.Background()
 		timestamp := v.Info.Timestamp
 
+		// O chatUC.HandleIncomingMessage agora faz tudo:
+		// Salva banco -> SSE (Broker) -> Flow Builder -> Auto Reply
 		err := l.chatUC.HandleIncomingMessage(ctx, phone, content, "text", timestamp)
 		if err != nil {
 			slog.Error("Erro ao processar mensagem recebida", "phone", phone, "err", err)
 		} else {
-			slog.Info("Mensagem recebida com sucesso", "phone", phone)
-		}
-
-		err = l.flowUC.ProcessIncomingMessage(ctx, phone, content)
-		if err != nil {
-			slog.Error("Erro ao processar fluxo do bot", "err", err)
+			slog.Info("Mensagem recebida e processada com sucesso", "phone", phone)
 		}
 	}
 }

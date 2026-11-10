@@ -10,6 +10,7 @@ import (
 	"github.com/Jeffersoncharlles/KlozerWapp/internal/config"
 	"github.com/Jeffersoncharlles/KlozerWapp/internal/delivery/http"
 	"github.com/Jeffersoncharlles/KlozerWapp/internal/delivery/http/handler"
+	"github.com/Jeffersoncharlles/KlozerWapp/internal/domain"
 	"github.com/Jeffersoncharlles/KlozerWapp/internal/infra/sse"
 	"github.com/Jeffersoncharlles/KlozerWapp/internal/infra/whatsapp"
 	"github.com/Jeffersoncharlles/KlozerWapp/internal/repository/sqlite"
@@ -42,8 +43,11 @@ func InitializeApp(cfg *config.Config) (*App, error) {
 		return nil, err
 	}
 	whatsAppGateway := whatsapp.NewWhatsAppManager(client)
-	autoReplyUseCase := usecase.NewAutoReplyUseCase(whatsAppGateway)
-	chatUseCase := usecase.NewChatUseCase(messageRepository, contactUseCase, kanbanUseCase, autoReplyUseCase, whatsAppGateway)
+	autoReplyUseCase := usecase.NewAutoReplyUseCase(whatsAppGateway, messageRepository)
+	flowRepository := sqlite.NewFlowRepository(gormProvider)
+	flowUseCase := usecase.NewFlowUseCase(flowRepository, whatsAppGateway)
+	broker := sse.NewBroker()
+	chatUseCase := usecase.NewChatUseCase(messageRepository, contactUseCase, kanbanUseCase, autoReplyUseCase, flowUseCase, broker, whatsAppGateway)
 	messageHandler := handler.NewMessageHandler(chatUseCase)
 	quickReplyRepository := sqlite.NewQuickReplyRepository(gormProvider)
 	quickReplyUseCase := usecase.NewQuickReplyUseCase(quickReplyRepository)
@@ -51,10 +55,7 @@ func InitializeApp(cfg *config.Config) (*App, error) {
 	tagRepository := sqlite.NewTagRepository(gormProvider)
 	tagUseCase := usecase.NewTagUseCase(tagRepository)
 	tagHandler := handler.NewTagHandler(tagUseCase)
-	broker := sse.NewBroker()
 	sessionHandler := handler.NewSessionHandler(whatsAppGateway, broker)
-	flowRepository := sqlite.NewFlowRepository(gormProvider)
-	flowUseCase := usecase.NewFlowUseCase(flowRepository, whatsAppGateway)
 	flowHandler := handler.NewFlowHandler(flowUseCase)
 	queueRepository := sqlite.NewQueueRepository(gormProvider)
 	queueUseCase := usecase.NewQueueUseCase(queueRepository)
@@ -82,7 +83,7 @@ func InitializeApp(cfg *config.Config) (*App, error) {
 		Call:       callHandler,
 	}
 	httpHandler := http.NewRouter(routerHandlers, jwtAuth)
-	whatsAppListener := whatsapp.NewWhatsAppListener(client, chatUseCase, flowUseCase)
+	whatsAppListener := whatsapp.NewWhatsAppListener(client, chatUseCase)
 	app := NewApp(httpHandler, whatsAppListener)
 	return app, nil
 }
@@ -100,7 +101,7 @@ var ConfigSet = wire.NewSet(
 
 var InfraWhatsAppSet = wire.NewSet(whatsapp.ProvideWhatsmeowClient, whatsapp.NewWhatsAppManager, whatsapp.NewWhatsAppListener)
 
-var InfraSSESet = wire.NewSet(sse.NewBroker)
+var InfraSSESet = wire.NewSet(sse.NewBroker, wire.Bind(new(domain.Broker), new(*sse.Broker)))
 
 var RepositorySet = wire.NewSet(sqlite.NewGormProvider, sqlite.NewUserRepository, sqlite.NewKanbanRepository, sqlite.NewMessageRepository, sqlite.NewQuickReplyRepository, sqlite.NewTagRepository, sqlite.NewContactRepository, sqlite.NewFlowRepository, sqlite.NewQueueRepository, sqlite.NewReportRepository, sqlite.NewCampaignRepository, sqlite.NewCallRepository)
 

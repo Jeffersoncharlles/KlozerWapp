@@ -51,12 +51,12 @@ func (uc *flowUseCase) DeleteFlow(ctx context.Context, id string) error {
 	return uc.flowRepo.Delete(ctx, id)
 }
 
-func (uc *flowUseCase) ProcessIncomingMessage(ctx context.Context, phone, messageContent string) error {
+func (uc *flowUseCase) ProcessIncomingMessage(ctx context.Context, phone, messageContent string) (bool, error) {
 	// 1. Verifica se a mensagem ativa algum gatilho de fluxo
 	flow, err := uc.flowRepo.GetByKeyword(ctx, messageContent)
 	if err != nil || flow == nil {
 		// Nenhum fluxo encontrado para essa palavra-chave (segue o atendimento normal do CRM)
-		return nil
+		return false, nil // <-- Retorna false, indicando que o fluxo não assumiu
 	}
 
 	slog.Info("Fluxo de automação acionado", "flow", flow.Name, "phone", phone)
@@ -67,9 +67,9 @@ func (uc *flowUseCase) ProcessIncomingMessage(ctx context.Context, phone, messag
 		err = uc.waGateway.SendMessage(ctx, phone, firstNode.Content)
 		if err != nil {
 			slog.Error("Erro ao enviar mensagem do fluxo via WhatsApp", "err", err)
-			return err
+			return true, err // <-- Retorna true (acionou), mas repassa o erro de envio
 		}
 	}
 
-	return nil
+	return true, nil // <-- Retorna true, indicando que o bot assumiu e respondeu com sucesso
 }

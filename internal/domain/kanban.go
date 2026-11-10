@@ -54,6 +54,7 @@ type KanbanRepository interface {
 	MoveCard(ctx context.Context, cardID, targetColumnID string, newPosition int) error
 	GetCardByContactID(ctx context.Context, contactID string) (*KanbanCard, error)
 	AssignUserToCard(ctx context.Context, cardID, userID string) error
+	GetFirstColumn(ctx context.Context) (*KanbanColumn, error)
 }
 
 type KanbanUseCase interface {

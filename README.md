@@ -1,127 +1,183 @@
 # Klozer Wapp
 
-CRM para gerenciamento de atendimentos e relacionamento com clientes pelo
-WhatsApp, com back-end em Go e front-end em React Router Framework Mode.
+Backend de um CRM para atendimento e relacionamento com clientes pelo
+WhatsApp. O projeto expõe uma API HTTP em Go para autenticação, conversas,
+filas, Kanban, campanhas, automações e acompanhamento de atendimentos.
 
-> Projeto em fase inicial de estruturação.
+Esta documentação cobre somente o backend e os arquivos da raiz. A pasta
+`web/` é o cliente web e não faz parte desta varredura.
 
-## Visão geral
+## Tecnologias utilizadas
 
-O sistema será desenvolvido para centralizar:
+- **Go 1.27.3**: linguagem e runtime da aplicação.
+- **Chi** (`go-chi/chi/v5`): roteamento HTTP e middlewares.
+- **CORS** (`go-chi/cors`): configuração de acesso cross-origin.
+- **JWT** (`go-chi/jwtauth/v5`): autenticação por token e autorização por
+  perfil.
+- **GORM** (`gorm.io/gorm`): ORM, consultas e migração automática.
+- **SQLite** (`gorm.io/driver/sqlite` e `mattn/go-sqlite3`): persistência do
+  CRM e armazenamento local das sessões.
+- **Viper**: leitura de `.env`, variáveis de ambiente e valores padrão.
+- **Google Wire**: injeção de dependências em tempo de compilação.
+- **Whatsmeow**: conexão com o WhatsApp, recebimento de eventos, QR Code,
+  envio de mensagens e presença.
+- **Protocol Buffers**: representação das mensagens usadas pelo Whatsmeow.
+- **Server-Sent Events (SSE)**: transmissão de eventos em tempo real para
+  clientes conectados.
+- **`log/slog`**: logs estruturados em JSON.
+- **Make**: atalhos para build e execução em desenvolvimento.
 
-- Conversas e histórico de mensagens do WhatsApp;
-- Contatos, empresas e informações dos clientes;
-- Filas, equipes e responsáveis pelo atendimento;
-- Tags, notas e tarefas de acompanhamento;
-- Funil de vendas e indicadores de atendimento;
-- Integração com a API oficial do WhatsApp Business.
+## Arquitetura e responsabilidades
 
-## Stack planejada
-
-### Back-end
-
-- Go;
-- API HTTP/REST;
-- Banco de dados relacional;
-- Webhooks para recebimento de eventos do WhatsApp;
-- Autenticação e autorização por usuário e equipe.
-
-### Front-end
-
-- React;
-- React Router Framework Mode;
-- TypeScript;
-- Interface responsiva para operação do CRM;
-- Consumo da API do back-end.
-
-## Estrutura esperada
+O backend segue uma separação em camadas:
 
 ```text
-.
-├── backend/          # API, regras de negócio e integrações em Go
-├── frontend/         # Aplicação web em React Router
-├── docs/              # Documentação técnica e de produto
-├── .env.example      # Variáveis de ambiente de exemplo
-├── .gitignore
-└── README.md
+cmd/
+  main.go              Entrada da aplicação e ciclo de vida do servidor
+  wire.go              Configuração da injeção de dependências
+  wire_gen.go          Código gerado pelo Google Wire
+
+internal/
+  config/              Configuração da aplicação
+  delivery/http/       Router, handlers, middleware e respostas HTTP
+  domain/              Entidades e contratos das regras de negócio
+  infra/sse/           Broker de eventos Server-Sent Events
+  infra/whatsapp/      Cliente, conexão e listener do WhatsApp
+  repository/          Abstrações de persistência
+  repository/sqlite/   Implementações dos repositórios com GORM/SQLite
+  usecase/             Casos de uso e regras de negócio
 ```
 
-## Pré-requisitos
+### Fluxo de uma requisição
 
-- Go (versão definida no `go.mod`);
-- Node.js LTS e npm, pnpm ou yarn;
-- Banco de dados utilizado pelo ambiente;
-- Conta e credenciais da API do WhatsApp Business para os testes de
-  integração.
+1. `cmd/main.go` carrega a configuração e inicializa logs.
+2. O Google Wire monta router, handlers, casos de uso, repositórios e
+   integrações.
+3. O Chi aplica request ID, log, recuperação de panics, timeout e CORS.
+4. As rotas autenticadas validam o JWT antes de chamar os handlers.
+5. Os handlers delegam a operação aos casos de uso.
+6. Os casos de uso acessam os repositórios e as gateways de infraestrutura.
+7. As respostas são serializadas pelo pacote de resposta HTTP.
 
-## Como começar
+## Funcionalidades implementadas
 
-Quando os módulos forem inicializados, siga estes passos:
+- Login de usuários com JWT.
+- Controle de acesso por perfil, incluindo rotas exclusivas para `ADMIN`.
+- Suporte interno a usuários, além de contatos, tags e respostas rápidas.
+- Quadro Kanban e movimentação de cards.
+- Histórico e envio de mensagens.
+- Filas de atendimento.
+- Fluxos de automação e processamento de mensagens recebidas.
+- Campanhas e execução de campanhas.
+- Registro e histórico de chamadas.
+- Relatório/dashboard.
+- Gerenciamento da sessão do WhatsApp, status e QR Code.
+- Canal SSE para atualizações da sessão em tempo real.
+- Recebimento de mensagens do WhatsApp e encaminhamento para chat e fluxos.
 
-```bash
-# Clonar o projeto
-git clone <url-do-repositorio>
-cd KlozerWapp
+O envio de mídia ainda não está implementado; o MVP suporta o envio de
+mensagens de texto e presença de digitação.
 
-# Preparar as variáveis de ambiente
-cp .env.example .env
+## API
 
-# Iniciar o back-end
-cd backend
-go mod download
-go run .
+A API usa o prefixo `/v1/api`. O endpoint `/health` é público e retorna o
+status do serviço.
 
-# Em outro terminal, iniciar o front-end
-cd frontend
-npm install
-npm run dev
-```
+| Grupo | Principais operações |
+|---|---|
+| `/auth` | Login |
+| `/kanban` | Consultar quadro e mover cards |
+| `/messages` | Histórico por contato e envio de mensagem |
+| `/quick-replies` | Listar e criar respostas rápidas |
+| `/tags` | Listar tags |
+| `/flows` | Listar, criar, consultar e excluir fluxos |
+| `/queues` | CRUD de filas |
+| `/reports` | Dashboard |
+| `/campaigns` | Listar, criar e executar campanhas |
+| `/calls` | Registrar e consultar chamadas por telefone |
+| `/sessions` | Status, stream SSE e operações administrativas da sessão |
 
-Os comandos podem mudar conforme a estrutura definitiva dos módulos.
+Com exceção de `/health` e do login, os grupos são protegidos por JWT. O
+grupo `/sessions` também exige a role `ADMIN`.
+
+## Persistência e inicialização
+
+Ao iniciar, o GORM:
+
+- abre o banco configurado em `DB_PATH`;
+- habilita WAL, foreign keys e timeout de espera do SQLite;
+- executa `AutoMigrate` para as entidades do domínio;
+- cria colunas padrão do Kanban quando o banco está vazio.
+
+São utilizados dois arquivos SQLite por padrão:
+
+- `crm.db`: dados do CRM;
+- `wa_sessions.db`: armazenamento da sessão do WhatsApp pelo Whatsmeow.
 
 ## Configuração
 
-Não versionar credenciais. Variáveis sensíveis devem ser definidas no arquivo
-`.env`, criado a partir do `.env.example`.
+As configurações podem ser definidas em um arquivo `.env` ou por variáveis de
+ambiente. Os valores padrão são:
 
-Exemplos de configurações esperadas:
+| Variável | Padrão | Finalidade |
+|---|---:|---|
+| `PORT` | `3000` | Porta do servidor HTTP |
+| `JWT_SECRET` | `super-secret-key-change-me` | Segredo para assinar tokens |
+| `DB_PATH` | `crm.db` | Caminho do banco do CRM |
+| `MAX_USERS` | `3` | Limite configurado de usuários |
+| `MAX_WHATSAPP` | `1` | Limite configurado de conexões WhatsApp |
 
-```env
-APP_ENV=development
-API_PORT=8080
-DATABASE_URL=
-WHATSAPP_ACCESS_TOKEN=
-WHATSAPP_PHONE_NUMBER_ID=
-WHATSAPP_VERIFY_TOKEN=
-```
+`MAX_USERS` e `MAX_WHATSAPP` já fazem parte da configuração, mas ainda não são
+aplicados por uma regra de negócio no código atual. Em ambientes reais,
+substitua o segredo JWT padrão e não versione credenciais.
 
-## Desenvolvimento
+## Pré-requisitos
 
-Antes de abrir um pull request:
+- Go 1.27.3 ou compatível com o `go.mod`;
+- SQLite;
+- ferramenta `make` (opcional);
+- ambiente compatível com a dependência nativa `go-sqlite3`.
+
+## Como executar
+
+Na raiz do projeto:
 
 ```bash
-# Back-end
-go test ./...
-gofmt -w .
+# Baixar dependências
+go mod download
 
-# Front-end
-npm run lint
-npm run typecheck
-npm run build
+# Executar em desenvolvimento
+go run ./cmd
+
+# Ou usar o atalho do Makefile
+make dev
 ```
 
-Execute apenas os comandos disponíveis nos respectivos `package.json` e
-`Makefile` quando esses arquivos forem criados.
+Para gerar um binário:
 
-## Princípios do projeto
+```bash
+make build
+./crm-api
+```
 
-- Manter as regras de negócio no back-end;
-- Validar e registrar eventos recebidos por webhook;
-- Proteger tokens, senhas e dados pessoais;
-- Usar migrations versionadas para alterações no banco;
-- Cobrir fluxos críticos com testes automatizados;
-- Manter a documentação atualizada junto com as mudanças.
+Por padrão, a API fica disponível em `http://localhost:3000` e o health check
+em `http://localhost:3000/health`.
 
-## Licença
+## Validação
 
-A licença ainda será definida.
+Execute os testes do backend com:
+
+```bash
+go test ./...
+```
+
+O repositório atualmente não possui arquivos de teste automatizados nos
+pacotes Go; o comando valida a compilação de todos os pacotes.
+
+## Observações
+
+- O projeto é single-tenant no provider SQLite atual.
+- As migrações são automáticas; não há diretório de migrations versionadas.
+- A conexão do WhatsApp é feita pelo Whatsmeow, com sessão persistida em
+  SQLite e autenticação inicial por QR Code.
+- A licença do projeto ainda não está definida.

@@ -6,13 +6,14 @@ package main
 import (
 	"net/http"
 
+	"github.com/Jeffersoncharlles/KlozerWapp/internal/domain"
+	"github.com/Jeffersoncharlles/KlozerWapp/internal/infra/sse"
 	"github.com/go-chi/jwtauth/v5"
 	"github.com/google/wire"
 
 	"github.com/Jeffersoncharlles/KlozerWapp/internal/config"
 	deliveryHttp "github.com/Jeffersoncharlles/KlozerWapp/internal/delivery/http"
 	"github.com/Jeffersoncharlles/KlozerWapp/internal/delivery/http/handler"
-	"github.com/Jeffersoncharlles/KlozerWapp/internal/infra/sse"
 	"github.com/Jeffersoncharlles/KlozerWapp/internal/infra/whatsapp"
 	"github.com/Jeffersoncharlles/KlozerWapp/internal/repository/sqlite"
 	"github.com/Jeffersoncharlles/KlozerWapp/internal/usecase"
@@ -43,6 +44,7 @@ var InfraWhatsAppSet = wire.NewSet(
 
 var InfraSSESet = wire.NewSet(
 	sse.NewBroker,
+	wire.Bind(new(domain.Broker), new(*sse.Broker)),
 )
 
 var RepositorySet = wire.NewSet(

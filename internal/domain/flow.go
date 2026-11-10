@@ -53,5 +53,5 @@ type FlowUseCase interface {
 	DeleteFlow(ctx context.Context, id string) error
 
 	// Executa o próximo passo do chatbot quando chega uma mensagem no WhatsApp
-	ProcessIncomingMessage(ctx context.Context, phone, messageContent string) error
+	ProcessIncomingMessage(ctx context.Context, phone, messageContent string) (bool, error)
 }
