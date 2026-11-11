@@ -17,6 +17,7 @@ import (
 	"github.com/Jeffersoncharlles/KlozerWapp/internal/usecase"
 	"github.com/go-chi/jwtauth/v5"
 	"github.com/google/wire"
+	"log/slog"
 	http2 "net/http"
 )
 
@@ -94,6 +95,7 @@ func InitializeApp(cfg *config.Config) (*App, error) {
 
 // ProvideJWTAuth cria a instância do jwtauth usando o segredo do .env
 func ProvideJWTAuth(cfg *config.Config) *jwtauth.JWTAuth {
+	slog.Info("DEBUG JWT", "tamanho_chave", len(cfg.JWTSecret))
 	return jwtauth.New("HS256", []byte(cfg.JWTSecret), nil)
 }
 

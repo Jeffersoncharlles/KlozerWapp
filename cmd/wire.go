@@ -10,6 +10,7 @@ import (
 	"github.com/Jeffersoncharlles/KlozerWapp/internal/infra/sse"
 	"github.com/go-chi/jwtauth/v5"
 	"github.com/google/wire"
+	"log/slog"
 
 	"github.com/Jeffersoncharlles/KlozerWapp/internal/config"
 	deliveryHttp "github.com/Jeffersoncharlles/KlozerWapp/internal/delivery/http"
@@ -25,6 +26,7 @@ import (
 
 // ProvideJWTAuth cria a instância do jwtauth usando o segredo do .env
 func ProvideJWTAuth(cfg *config.Config) *jwtauth.JWTAuth {
+
 	return jwtauth.New("HS256", []byte(cfg.JWTSecret), nil)
 }
 
