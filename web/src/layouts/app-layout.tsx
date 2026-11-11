@@ -1,11 +1,14 @@
-import { Outlet } from "react-router"
+import { Outlet } from "react-router";
+import { SidebarProvider } from "../components/ui/sidebar";
+import { AppSidebar } from "../components/app-sidebar";
 
 export const AppLayout = () => {
-    return (
-        <div>
-            <main>
-                <Outlet />
-            </main>
-        </div>
-    )
-}
+  return (
+    <SidebarProvider>
+      <AppSidebar />
+      <main>
+        <Outlet />
+      </main>
+    </SidebarProvider>
+  );
+};

@@ -37,10 +37,7 @@ export const SignIn = () => {
           />
         </div>
         <div className="flex items-center justify-between">
-          <Button
-            type="submit"
-            className="bg-blue-500 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded focus:outline-none focus:shadow-outline"
-          >
+          <Button type="submit" variant={"outline"}>
             Sign In
           </Button>
         </div>
