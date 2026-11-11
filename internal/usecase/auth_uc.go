@@ -12,6 +12,7 @@ import (
 type authUseCase struct {
 	userRepo  domain.UserRepository
 	tokenAuth *jwtauth.JWTAuth
+	jwtSecret string
 }
 
 func NewAuthUseCase(repo domain.UserRepository, tokenAuth *jwtauth.JWTAuth) domain.AuthUseCase {

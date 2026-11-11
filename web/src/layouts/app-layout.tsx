@@ -1,14 +1,14 @@
 import { Outlet } from "react-router";
-import { SidebarProvider } from "../components/ui/sidebar";
+import { SidebarInset, SidebarProvider } from "../components/ui/sidebar";
 import { AppSidebar } from "../components/app-sidebar";
 
 export const AppLayout = () => {
   return (
     <SidebarProvider>
       <AppSidebar />
-      <main>
+      <SidebarInset>
         <Outlet />
-      </main>
+      </SidebarInset>
     </SidebarProvider>
   );
 };

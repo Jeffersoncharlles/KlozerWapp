@@ -2,8 +2,8 @@ import { Outlet } from "react-router";
 
 export const PublicAcessLayout = () => {
   return (
-    <div className="flex min-h-screen bg-background">
-      <main className="flex-1 p-4 pt-20 md:p-6 md:pt-6">
+    <div className="flex min-h-screen bg-background text-foreground">
+      <main className="flex min-h-screen w-full flex-1">
         <Outlet />
       </main>
     </div>

@@ -126,8 +126,7 @@ ambiente:
 | `PORT` | `3000` | Porta do servidor HTTP |
 | `JWT_SECRET` | `super-secret-key-change-me` | Segredo usado para assinar tokens |
 | `DB_PATH` | `crm.db` | Caminho do banco principal do CRM |
-| `MAX_USERS` | `3` | Limite configurado de usuários |
-| `MAX_WHATSAPP` | `1` | Limite configurado de conexões WhatsApp |
+
 
 > ⚠️ Em produção, substitua o segredo JWT padrão e não versione credenciais.
 
