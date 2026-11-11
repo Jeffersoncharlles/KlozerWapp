@@ -1,5 +1,6 @@
 import { NavLink } from "react-router";
 import {
+  ChevronRight,
   BarChart3,
   Bot,
   ContactRound,
@@ -81,10 +82,10 @@ function NavigationGroup({
 
 export function AppSidebar() {
   return (
-    <Sidebar>
+    <Sidebar collapsible="icon">
       <SidebarHeader className="p-4">
         <div className="flex items-center gap-3">
-          <div className="flex size-9 items-center justify-center rounded-xl bg-emerald-500 text-emerald-950">
+          <div className="flex size-9 shrink-0 items-center justify-center rounded-lg bg-primary text-primary-foreground">
             <MessageCircle className="size-5" />
           </div>
           <div className="grid flex-1 text-left text-sm leading-tight">
@@ -93,6 +94,11 @@ export function AppSidebar() {
           </div>
         </div>
       </SidebarHeader>
+      <div className="mx-3 mb-1 flex items-center gap-2 rounded-lg bg-secondary px-3 py-2 group-data-[collapsible=icon]:mx-2 group-data-[collapsible=icon]:size-8 group-data-[collapsible=icon]:justify-center group-data-[collapsible=icon]:p-0">
+        <span className="size-2 shrink-0 rounded-full bg-emerald-500" />
+        <div className="min-w-0 flex-1 group-data-[collapsible=icon]:hidden"><p className="truncate text-xs font-semibold">WhatsApp conectado</p><p className="truncate text-[10px] text-sidebar-foreground/60">Sessão principal online</p></div>
+        <ChevronRight className="size-4 text-sidebar-foreground/60 group-data-[collapsible=icon]:hidden" />
+      </div>
       <SidebarSeparator className="mx-3 w-auto" />
       <SidebarContent>
         <NavigationGroup label="Workspace" items={mainNavigation} />

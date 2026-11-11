@@ -2,6 +2,7 @@ import { createBrowserRouter, RouterProvider } from "react-router";
 import { PublicAcessLayout } from "../layouts/public-access-layout";
 import { AppLayout } from "../layouts/app-layout";
 import { FeaturePlaceholder } from "../pages/feature-placeholder";
+import { authenticateMiddleware } from "../core/middlewares/authenticate";
 
 function RouteFallback() {
   return <div role="status">Carregando aplicacao...</div>;
@@ -30,6 +31,7 @@ const router = createBrowserRouter([
   {
     path: "/dashboard",
     Component: AppLayout,
+    loader: authenticateMiddleware,
     HydrateFallback: RouteFallback,
     children: [
       {
@@ -49,7 +51,14 @@ const router = createBrowserRouter([
       },
       {
         path: "kanban",
-        lazy: async () => ({ Component: (await import("../pages/kanban")).Kanban }),
+        lazy: async () => {
+          const module = await import("../pages/kanban");
+
+          return {
+            Component: module.Kanban,
+            loader: module.loader,
+          };
+        },
       },
       {
         path: "automations",
