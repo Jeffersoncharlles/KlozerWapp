@@ -53,7 +53,7 @@ func InitializeApp(cfg *config.Config) (*App, error) {
 	quickReplyUseCase := usecase.NewQuickReplyUseCase(quickReplyRepository)
 	quickReplyHandler := handler.NewQuickReplyHandler(quickReplyUseCase)
 	tagRepository := sqlite.NewTagRepository(gormProvider)
-	tagUseCase := usecase.NewTagUseCase(tagRepository)
+	tagUseCase := usecase.NewTagUseCase(tagRepository, kanbanUseCase, broker)
 	tagHandler := handler.NewTagHandler(tagUseCase)
 	sessionHandler := handler.NewSessionHandler(whatsAppGateway, broker)
 	flowHandler := handler.NewFlowHandler(flowUseCase)
@@ -69,6 +69,7 @@ func InitializeApp(cfg *config.Config) (*App, error) {
 	callRepository := sqlite.NewCallRepository(gormProvider)
 	callUseCase := usecase.NewCallUseCase(callRepository)
 	callHandler := handler.NewCallHandler(callUseCase)
+	docsHandler := handler.NewDocsHandler()
 	routerHandlers := http.RouterHandlers{
 		Auth:       authHandler,
 		Kanban:     kanbanHandler,
@@ -81,6 +82,7 @@ func InitializeApp(cfg *config.Config) (*App, error) {
 		Report:     reportHandler,
 		Campaign:   campaignHandler,
 		Call:       callHandler,
+		Docs:       docsHandler,
 	}
 	httpHandler := http.NewRouter(routerHandlers, jwtAuth)
 	whatsAppListener := whatsapp.NewWhatsAppListener(client, chatUseCase)
@@ -107,7 +109,7 @@ var RepositorySet = wire.NewSet(sqlite.NewGormProvider, sqlite.NewUserRepository
 
 var UseCaseSet = wire.NewSet(usecase.NewAuthUseCase, usecase.NewUserUseCase, usecase.NewKanbanUseCase, usecase.NewChatUseCase, usecase.NewQuickReplyUseCase, usecase.NewAutoReplyUseCase, usecase.NewContactUseCase, usecase.NewTagUseCase, usecase.NewFlowUseCase, usecase.NewQueueUseCase, usecase.NewReportUseCase, usecase.NewCampaignUseCase, usecase.NewCallUseCase)
 
-var HandlerSet = wire.NewSet(handler.NewAuthHandler, handler.NewKanbanHandler, handler.NewMessageHandler, handler.NewQuickReplyHandler, handler.NewTagHandler, handler.NewSessionHandler, handler.NewFlowHandler, handler.NewQueueHandler, handler.NewReportHandler, handler.NewCampaignHandler, handler.NewCallHandler, wire.Struct(new(http.RouterHandlers), "*"))
+var HandlerSet = wire.NewSet(handler.NewAuthHandler, handler.NewKanbanHandler, handler.NewMessageHandler, handler.NewQuickReplyHandler, handler.NewTagHandler, handler.NewSessionHandler, handler.NewFlowHandler, handler.NewQueueHandler, handler.NewReportHandler, handler.NewCampaignHandler, handler.NewCallHandler, handler.NewDocsHandler, wire.Struct(new(http.RouterHandlers), "*"))
 
 // App agrupa os serviços principais que precisam ficar rodando
 type App struct {

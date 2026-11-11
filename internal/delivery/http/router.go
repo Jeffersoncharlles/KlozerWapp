@@ -27,6 +27,7 @@ type RouterHandlers struct {
 	Report     *handler.ReportHandler
 	Campaign   *handler.CampaignHandler
 	Call       *handler.CallHandler
+	Docs       *handler.DocsHandler
 }
 
 // Note que agora injetamos o tokenAuth (*jwtauth.JWTAuth) gerado pelo Wire
@@ -59,6 +60,7 @@ func NewRouter(h RouterHandlers, tokenAuth *jwtauth.JWTAuth) http.Handler {
 		// 2.1 Rotas Públicas
 		r.Group(func(r chi.Router) {
 			h.Auth.RegisterRoutes(r) // POST /v1/api/auth/login
+			h.Docs.RegisterRoutes(r)
 		})
 
 		// 2.2 Rotas Autenticadas (Atendentes do CRM)

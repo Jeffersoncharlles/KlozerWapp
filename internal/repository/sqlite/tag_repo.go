@@ -68,3 +68,31 @@ func (r *tagRepo) RemoveFromContact(ctx context.Context, tagID, contactID string
 
 	return db.Model(&contact).Association("Tags").Delete(&tag)
 }
+
+func (r *tagRepo) GetByID(ctx context.Context, id string) (*domain.Tag, error) {
+	db, err := r.provider.GetDB(ctx)
+	if err != nil {
+		return nil, err
+	}
+
+	var tag domain.Tag
+	if err := db.First(&tag, "id = ?", id).Error; err != nil {
+		return nil, err
+	}
+	return &tag, nil
+}
+
+func (r *tagRepo) AttachToContact(ctx context.Context, contactID string, tagID string) error {
+	db, err := r.provider.GetDB(ctx)
+	if err != nil {
+		return err
+	}
+
+	contact := domain.Contact{ID: contactID}
+	var tags []domain.Tag
+	if err := db.Where("id IN ?", tagID).Find(&tags).Error; err != nil {
+		return err
+	}
+
+	return db.Model(&contact).Association("Tags").Replace(tags)
+}

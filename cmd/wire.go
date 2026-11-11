@@ -90,6 +90,7 @@ var HandlerSet = wire.NewSet(
 	handler.NewReportHandler,
 	handler.NewCampaignHandler,
 	handler.NewCallHandler,
+	handler.NewDocsHandler,
 	wire.Struct(new(deliveryHttp.RouterHandlers), "*"),
 )
 

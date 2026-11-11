@@ -29,6 +29,8 @@ type TagRepository interface {
 	Delete(ctx context.Context, id string) error
 	AssignToContact(ctx context.Context, tagID, contactID string) error
 	RemoveFromContact(ctx context.Context, tagID, contactID string) error
+	GetByID(ctx context.Context, id string) (*Tag, error)
+	AttachToContact(ctx context.Context, contactID string, tagID string) error
 }
 
 type TagUseCase interface {
