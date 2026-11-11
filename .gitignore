@@ -4,6 +4,7 @@
 !.env.example
 *.pem
 *.key
+.txt
 
 # Operating system
 .DS_Store
