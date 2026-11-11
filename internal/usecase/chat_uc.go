@@ -13,6 +13,8 @@ type chatUseCase struct {
 	kanbanUC  domain.KanbanUseCase
 	autoRepUC AutoReplyUseCase
 	waGateway domain.WhatsAppGateway // Comunica direto com whatsmeow ou Cloud API
+	flowUC    domain.FlowUseCase     // <-- ADICIONADO: Motor do Chatbot
+	broker    domain.Broker          // <-- ADICIONADO: Para o React atualizar em tempo real
 }
 
 func NewChatUseCase(
@@ -20,6 +22,8 @@ func NewChatUseCase(
 	cuc domain.ContactUseCase,
 	kuc domain.KanbanUseCase,
 	arc AutoReplyUseCase,
+	fuc domain.FlowUseCase,
+	brk domain.Broker,
 	wa domain.WhatsAppGateway,
 ) domain.ChatUseCase {
 	return &chatUseCase{
@@ -27,6 +31,8 @@ func NewChatUseCase(
 		contactUC: cuc,
 		kanbanUC:  kuc,
 		autoRepUC: arc,
+		flowUC:    fuc,
+		broker:    brk,
 		waGateway: wa,
 	}
 }
@@ -57,10 +63,19 @@ func (uc *chatUseCase) HandleIncomingMessage(ctx context.Context, phone, content
 		return err
 	}
 
-	// 4. (Opcional) Publicar via SSE para o Front-end React atualizar a tela
-	// eventBroker.Publish(contact.ID, msg)
+	// 4. Publicar via SSE para o Front-end React atualizar a tela IMEDIATAMENTE
+	// Assumindo que seu broker tenha um método Publish
+	_ = uc.broker.Publish("chat_"+contact.ID, msg)
 
-	// 5. Avalia auto-resposta (fora de hora, saudação, menu)
+	// 5. Tenta processar pelo Flow Builder (Chatbot) primeiro
+	// Se a mensagem for "Menu", por exemplo, o bot assume.
+	flowTriggered, err := uc.flowUC.ProcessIncomingMessage(ctx, phone, content)
+	if err == nil && flowTriggered {
+		// Se o chatbot respondeu, não mandamos a mensagem de boas-vindas padrão
+		return nil
+	}
+
+	// 6. Se não acionou nenhum fluxo, avalia auto-resposta (fora de hora, saudação)
 	return uc.autoRepUC.ProcessWelcomeMessage(ctx, contact)
 }
 
@@ -80,7 +95,7 @@ func (uc *chatUseCase) SendMessage(ctx context.Context, contactID, senderUserID,
 	}
 
 	// 2. Busca o telefone real do contato
-	contact, err := uc.contactUC.GetByPhone(ctx, contactID) // Adapte conforme seu repo
+	contact, err := uc.contactUC.GetByPhone(ctx, contactID)
 	if err != nil {
 		return nil, err
 	}
@@ -94,6 +109,10 @@ func (uc *chatUseCase) SendMessage(ctx context.Context, contactID, senderUserID,
 	time.Sleep(1 * time.Second) // Delay de humanização
 
 	err = uc.waGateway.SendMessage(ctx, contact.Phone, content)
+
+	// Notifica o frontend que a mensagem do atendente foi enviada com sucesso
+	_ = uc.broker.Publish("chat_"+contact.ID, msg)
+
 	return msg, err
 }
 

@@ -86,3 +86,18 @@ func (r *kanbanRepo) AssignUserToCard(ctx context.Context, cardID, userID string
 
 	return db.Model(&domain.KanbanCard{}).Where("id = ?", cardID).Update("assigned_to_user_id", userID).Error
 }
+
+func (r *kanbanRepo) GetFirstColumn(ctx context.Context) (*domain.KanbanColumn, error) {
+	db, err := r.provider.GetDB(ctx)
+	if err != nil {
+		return nil, err
+	}
+
+	var col domain.KanbanColumn
+	// Ordena pela posição crescente (0, 1, 2...) e pega a primeira
+	err = db.Order("position ASC").First(&col).Error
+	if err != nil {
+		return nil, err
+	}
+	return &col, nil
+}

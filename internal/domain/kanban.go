@@ -13,6 +13,7 @@ type KanbanColumn struct {
 	Name      string       `json:"name" gorm:"not null"`
 	Position  int          `json:"position" gorm:"not null"`
 	Cards     []KanbanCard `json:"cards,omitempty" gorm:"foreignKey:ColumnID"`
+	Color     string       `json:"color" gorm:"not null;default:'#3B82F6'"` // Cor padrão azul
 	CreatedAt time.Time    `json:"created_at" gorm:"autoCreateTime"`
 	UpdatedAt time.Time    `json:"updated_at" gorm:"autoUpdateTime"`
 }
@@ -53,6 +54,7 @@ type KanbanRepository interface {
 	MoveCard(ctx context.Context, cardID, targetColumnID string, newPosition int) error
 	GetCardByContactID(ctx context.Context, contactID string) (*KanbanCard, error)
 	AssignUserToCard(ctx context.Context, cardID, userID string) error
+	GetFirstColumn(ctx context.Context) (*KanbanColumn, error)
 }
 
 type KanbanUseCase interface {

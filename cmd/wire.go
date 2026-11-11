@@ -6,13 +6,14 @@ package main
 import (
 	"net/http"
 
+	"github.com/Jeffersoncharlles/KlozerWapp/internal/domain"
+	"github.com/Jeffersoncharlles/KlozerWapp/internal/infra/sse"
 	"github.com/go-chi/jwtauth/v5"
 	"github.com/google/wire"
 
 	"github.com/Jeffersoncharlles/KlozerWapp/internal/config"
 	deliveryHttp "github.com/Jeffersoncharlles/KlozerWapp/internal/delivery/http"
 	"github.com/Jeffersoncharlles/KlozerWapp/internal/delivery/http/handler"
-	"github.com/Jeffersoncharlles/KlozerWapp/internal/infra/sse"
 	"github.com/Jeffersoncharlles/KlozerWapp/internal/infra/whatsapp"
 	"github.com/Jeffersoncharlles/KlozerWapp/internal/repository/sqlite"
 	"github.com/Jeffersoncharlles/KlozerWapp/internal/usecase"
@@ -43,6 +44,7 @@ var InfraWhatsAppSet = wire.NewSet(
 
 var InfraSSESet = wire.NewSet(
 	sse.NewBroker,
+	wire.Bind(new(domain.Broker), new(*sse.Broker)),
 )
 
 var RepositorySet = wire.NewSet(
@@ -53,6 +55,11 @@ var RepositorySet = wire.NewSet(
 	sqlite.NewQuickReplyRepository,
 	sqlite.NewTagRepository,
 	sqlite.NewContactRepository,
+	sqlite.NewFlowRepository,
+	sqlite.NewQueueRepository,
+	sqlite.NewReportRepository,
+	sqlite.NewCampaignRepository,
+	sqlite.NewCallRepository,
 )
 
 var UseCaseSet = wire.NewSet(
@@ -64,6 +71,11 @@ var UseCaseSet = wire.NewSet(
 	usecase.NewAutoReplyUseCase,
 	usecase.NewContactUseCase,
 	usecase.NewTagUseCase,
+	usecase.NewFlowUseCase,
+	usecase.NewQueueUseCase,
+	usecase.NewReportUseCase,
+	usecase.NewCampaignUseCase,
+	usecase.NewCallUseCase,
 )
 
 var HandlerSet = wire.NewSet(
@@ -73,6 +85,12 @@ var HandlerSet = wire.NewSet(
 	handler.NewQuickReplyHandler,
 	handler.NewTagHandler,
 	handler.NewSessionHandler,
+	handler.NewFlowHandler,
+	handler.NewQueueHandler,
+	handler.NewReportHandler,
+	handler.NewCampaignHandler,
+	handler.NewCallHandler,
+	handler.NewDocsHandler,
 	wire.Struct(new(deliveryHttp.RouterHandlers), "*"),
 )
 

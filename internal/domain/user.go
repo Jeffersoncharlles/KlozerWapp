@@ -32,12 +32,18 @@ type UserRepository interface {
 	GetByEmail(ctx context.Context, email string) (*User, error)
 	List(ctx context.Context) ([]User, error)
 	CountActiveUsers(ctx context.Context) (int64, error)
+	UpdateStatus(ctx context.Context, id string, isActive bool) error // <-- ADICIONADO
+	Update(ctx context.Context, user *User) error                     // <-- NOVO
 }
 
 type AuthUseCase interface {
 	Authenticate(ctx context.Context, email, password string) (string, error)
 }
+
 type UserUseCase interface {
 	Create(ctx context.Context, name, email, password, role string) (*User, error)
 	List(ctx context.Context) ([]User, error)
+	GetByID(ctx context.Context, id string) (*User, error) // <-- ADICIONADO
+	Deactivate(ctx context.Context, id string) error       // <-- ADICIONADO
+	Update(ctx context.Context, updaterRole, targetUserID, name, email, password string) (*User, error)
 }

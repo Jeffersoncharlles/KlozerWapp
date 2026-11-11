@@ -1,6 +1,7 @@
 package sse
 
 import (
+	"encoding/json"
 	"fmt"
 	"net/http"
 	"sync"
@@ -74,4 +75,21 @@ func (b *Broker) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 			flusher.Flush()
 		}
 	}
+}
+
+func (b *Broker) Publish(topic string, data interface{}) error {
+	// Empacota o tópico e os dados em um único JSON para o frontend saber o que atualizar
+	payload := map[string]interface{}{
+		"topic": topic,
+		"data":  data,
+	}
+
+	bytes, err := json.Marshal(payload)
+	if err != nil {
+		return err
+	}
+
+	// Envia o JSON stringificado para o canal Notifier do SSE
+	b.Notifier <- string(bytes)
+	return nil
 }
