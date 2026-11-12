@@ -23,7 +23,8 @@ export function KanbanColumn({ column }: { column: KanbanColumnType }) {
           strategy={verticalListSortingStrategy}
         >
           <div
-            className={`min-h-24 space-y-3 rounded-lg transition-colors ${isOver ? 'bg-muted/70' : ''}`}
+            data-over={isOver || undefined}
+            className="min-h-24 space-y-3 rounded-lg transition-colors data-[over]:bg-muted/70"
             ref={setNodeRef}
           >
             {column.cards.map((card) => (

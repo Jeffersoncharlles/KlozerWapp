@@ -25,6 +25,9 @@ export function useConversationEvents() {
         queryClient.setQueryData<Conversation[]>(conversationQueryKeys.conversations, (current) =>
           current ? addMessageToConversation(current, message) : current,
         )
+        // A mensagem pode ser o primeiro evento de um novo contato. Recarrega
+        // a lista para obter o contato criado pelo backend e incluí-lo no CRM.
+        void queryClient.invalidateQueries({ queryKey: conversationQueryKeys.conversations })
         queryClient.setQueryData<ConversationMessage[]>(
           conversationQueryKeys.messages(message.contact_id),
           (current) => {

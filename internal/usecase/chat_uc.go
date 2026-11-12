@@ -44,7 +44,7 @@ func NewChatUseCase(
 func (uc *chatUseCase) HandleIncomingMessage(ctx context.Context, event domain.FlowIncoming) error {
 	phone, content := event.Phone, event.Text
 	// 1. Garante que o Contato existe no banco
-	contact, err := uc.contactUC.CreateOrUpdate(ctx, phone, "Cliente "+phone, "")
+	contact, err := uc.contactUC.CreateOrUpdate(ctx, phone, normalizeWhatsAppPhone(phone), "")
 	if err != nil {
 		return err
 	}

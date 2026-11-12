@@ -19,11 +19,10 @@ export function ConversationThread({ messages }: { messages: ConversationMessage
         {messages.map((message) => (
           <div
             key={message.id}
-            className={`flex max-w-[80%] flex-col gap-1 ${message.is_from_me ? 'self-end items-end' : 'self-start items-start'}`}
+            data-from-me={message.is_from_me || undefined}
+            className="group flex max-w-[80%] flex-col gap-1 self-start items-start group-data-[from-me]:self-end group-data-[from-me]:items-end"
           >
-            <div
-              className={`rounded-2xl px-4 py-3 text-sm ${message.is_from_me ? 'rounded-tr-sm bg-emerald-500 text-emerald-950' : 'rounded-tl-sm bg-muted'}`}
-            >
+            <div className="rounded-2xl rounded-tl-sm bg-muted px-4 py-3 text-sm group-data-[from-me]:rounded-tr-sm group-data-[from-me]:rounded-tl-none group-data-[from-me]:bg-emerald-500 group-data-[from-me]:text-emerald-950">
               {message.content}
             </div>
             <span className="flex items-center gap-1 text-[10px] text-muted-foreground">

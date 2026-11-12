@@ -20,9 +20,8 @@ export function AutomationFlowNode({ data, type, selected }: NodeProps) {
 
   return (
     <div
-      className={`min-w-56 rounded-lg border border-border border-l-2 border-l-primary bg-card text-card-foreground shadow-sm transition ${
-        selected ? 'ring-2 ring-emerald-400/50' : ''
-      }`}
+      data-selected={selected}
+      className="min-w-56 rounded-lg border border-border border-l-2 border-l-primary bg-card text-card-foreground shadow-sm transition data-[selected=true]:ring-2 data-[selected=true]:ring-emerald-400/50"
     >
       <Handle
         id="input"

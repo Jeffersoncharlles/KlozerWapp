@@ -82,7 +82,8 @@ export function WhatsAppConfigurationCard({ data }: { data: WhatsAppLoaderData }
             Salvar configuração
           </Button>
           <span
-            className={`text-xs ${dirty ? 'text-amber-600 dark:text-amber-400' : 'text-muted-foreground'}`}
+            data-state={dirty ? 'dirty' : 'saved'}
+            className="text-xs text-muted-foreground data-[state=dirty]:text-amber-600 dark:data-[state=dirty]:text-amber-400"
             role="status"
           >
             {dirty ? 'Alterações pendentes' : 'Configuração salva'}

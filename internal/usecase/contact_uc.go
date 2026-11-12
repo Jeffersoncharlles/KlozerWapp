@@ -25,7 +25,7 @@ func (uc *contactUseCase) CreateOrUpdate(ctx context.Context, phone, name, avata
 	if err == nil && contact != nil {
 		// Se existir, atualiza nome ou avatar se vieram preenchidos e diferentes
 		updated := false
-		if name != "" && contact.Name != name {
+		if name != "" && contact.Name != name && (contact.Name == "" || isGeneratedContactName(contact.Name)) {
 			contact.Name = name
 			updated = true
 		}

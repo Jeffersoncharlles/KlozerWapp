@@ -5,29 +5,25 @@ export const statCards = [
     key: 'total_contacts',
     label: 'Conversas abertas',
     icon: UsersRound,
-    color: 'text-primary',
-    bg: 'bg-accent',
+    tone: 'contacts',
   },
   {
     key: 'total_messages',
     label: 'Mensagens hoje',
     icon: MessageCircle,
-    color: 'text-emerald-600 dark:text-emerald-400',
-    bg: 'bg-emerald-500/10',
+    tone: 'messages',
   },
   {
     key: 'total_cards',
     label: 'Atendimentos',
     icon: Activity,
-    color: 'text-violet-600 dark:text-violet-400',
-    bg: 'bg-violet-500/10',
+    tone: 'cards',
   },
   {
     key: 'active_workflows',
     label: 'Automações ativas',
     icon: Zap,
-    color: 'text-amber-600 dark:text-amber-400',
-    bg: 'bg-amber-500/10',
+    tone: 'workflows',
   },
 ] as const
 

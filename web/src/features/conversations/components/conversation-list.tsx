@@ -1,23 +1,12 @@
 import { Filter, LoaderCircle, Search } from 'lucide-react'
 
-import { Avatar, AvatarFallback } from '../../../components/ui/avatar'
+import { Avatar, AvatarFallback, AvatarImage } from '../../../components/ui/avatar'
 import { Button } from '../../../components/ui/button'
 import { Card } from '../../../components/ui/card'
 import { Input } from '../../../components/ui/input'
 import { ScrollArea } from '../../../components/ui/scroll-area'
+import { contactDisplayName, contactInitials } from '../../../core/shared/contact'
 import type { Conversation } from '../domain/conversation'
-
-function initials(name: string) {
-  return (
-    name
-      .split(' ')
-      .filter(Boolean)
-      .slice(0, 2)
-      .map((part) => part[0])
-      .join('')
-      .toUpperCase() || '??'
-  )
-}
 
 function formatTime(value?: string) {
   if (!value) return ''
@@ -85,17 +74,24 @@ export function ConversationList({
               key={conversation.contact.id}
               type="button"
               onClick={() => onSelect(conversation.contact.id)}
-              className={`flex w-full items-center gap-3 rounded-xl p-3 text-left transition-colors ${selectedID === conversation.contact.id ? 'bg-emerald-400/10 ring-1 ring-emerald-400/30' : 'hover:bg-muted/50'}`}
+              data-selected={selectedID === conversation.contact.id || undefined}
+              className="flex w-full items-center gap-3 rounded-xl p-3 text-left transition-colors hover:bg-muted/50 data-[selected]:bg-emerald-400/10 data-[selected]:ring-1 data-[selected]:ring-emerald-400/30"
             >
               <Avatar>
+                {conversation.contact.avatar_url ? (
+                  <AvatarImage
+                    src={conversation.contact.avatar_url}
+                    alt={`Foto de ${contactDisplayName(conversation.contact.name, conversation.contact.phone)}`}
+                  />
+                ) : null}
                 <AvatarFallback className="bg-sky-400/15 text-sky-300">
-                  {initials(conversation.contact.name)}
+                  {contactInitials(conversation.contact.name, conversation.contact.phone)}
                 </AvatarFallback>
               </Avatar>
               <span className="min-w-0 flex-1">
                 <span className="flex items-center justify-between gap-2">
                   <strong className="truncate text-sm">
-                    {conversation.contact.name || conversation.contact.phone}
+                    {contactDisplayName(conversation.contact.name, conversation.contact.phone)}
                   </strong>
                   <small className="shrink-0 text-[10px] text-muted-foreground">
                     {formatTime(conversation.last_message?.timestamp)}

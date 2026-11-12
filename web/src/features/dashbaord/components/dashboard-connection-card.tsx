@@ -21,10 +21,12 @@ export function DashboardConnectionCard({ status }: { status?: string }) {
       </CardHeader>
       <CardContent>
         <div
-          className={`flex items-center gap-3 rounded-lg border p-4 ${connected ? 'border-emerald-500/20 bg-emerald-500/10' : 'border-amber-500/20 bg-amber-500/10'}`}
+          data-status={connected ? 'connected' : 'disconnected'}
+          className="flex items-center gap-3 rounded-lg border border-amber-500/20 bg-amber-500/10 p-4 data-[status=connected]:border-emerald-500/20 data-[status=connected]:bg-emerald-500/10"
         >
           <div
-            className={`flex size-9 items-center justify-center rounded-full ${connected ? 'bg-emerald-500/15 text-emerald-600 dark:text-emerald-400' : 'bg-amber-500/15 text-amber-600 dark:text-amber-400'}`}
+            data-status={connected ? 'connected' : 'disconnected'}
+            className="flex size-9 items-center justify-center rounded-full bg-amber-500/15 text-amber-600 dark:text-amber-400 data-[status=connected]:bg-emerald-500/15 data-[status=connected]:text-emerald-600 dark:data-[status=connected]:text-emerald-400"
           >
             <Wifi className="size-4" />
           </div>
@@ -37,7 +39,8 @@ export function DashboardConnectionCard({ status }: { status?: string }) {
             </p>
           </div>
           <span
-            className={`size-2 rounded-full ${connected ? 'bg-emerald-500' : 'bg-amber-500'}`}
+            data-status={connected ? 'connected' : 'disconnected'}
+            className="size-2 rounded-full bg-amber-500 data-[status=connected]:bg-emerald-500"
           />
         </div>
         <Button

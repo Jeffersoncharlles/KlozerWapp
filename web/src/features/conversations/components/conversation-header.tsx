@@ -1,20 +1,9 @@
 import { Archive, MoreHorizontal, UserRound } from 'lucide-react'
 
-import { Avatar, AvatarFallback } from '../../../components/ui/avatar'
+import { Avatar, AvatarFallback, AvatarImage } from '../../../components/ui/avatar'
 import { Button } from '../../../components/ui/button'
+import { contactDisplayName, contactInitials } from '../../../core/shared/contact'
 import type { Conversation, ConversationTag } from '../domain/conversation'
-
-function initials(name: string) {
-  return (
-    name
-      .split(' ')
-      .filter(Boolean)
-      .slice(0, 2)
-      .map((part) => part[0])
-      .join('')
-      .toUpperCase() || '??'
-  )
-}
 
 type Props = {
   conversation: Conversation
@@ -37,13 +26,19 @@ export function ConversationHeader({
   return (
     <div className="flex flex-wrap items-center gap-3 border-b border-border/70 p-4">
       <Avatar>
+        {conversation.contact.avatar_url ? (
+          <AvatarImage
+            src={conversation.contact.avatar_url}
+            alt={`Foto de ${contactDisplayName(conversation.contact.name, conversation.contact.phone)}`}
+          />
+        ) : null}
         <AvatarFallback className="bg-sky-400/15 text-sky-300">
-          {initials(conversation.contact.name)}
+          {contactInitials(conversation.contact.name, conversation.contact.phone)}
         </AvatarFallback>
       </Avatar>
       <div className="min-w-0 flex-1">
         <p className="truncate text-sm font-semibold">
-          {conversation.contact.name || conversation.contact.phone}
+          {contactDisplayName(conversation.contact.name, conversation.contact.phone)}
         </p>
         <p className="text-xs text-muted-foreground">{conversation.contact.phone}</p>
         <div className="mt-2 flex flex-wrap gap-1">

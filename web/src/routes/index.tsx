@@ -96,7 +96,15 @@ const router = createBrowserRouter([
       },
       {
         path: 'reports',
-        lazy: async () => ({ Component: (await import('../pages/reports')).Reports }),
+        lazy: async () => {
+          const module = await import('../pages/reports')
+
+          return {
+            Component: module.Reports,
+            loader: module.loader,
+            ErrorBoundary: module.ReportsErrorBoundary,
+          }
+        },
       },
       {
         path: 'whatsapp',
@@ -115,7 +123,6 @@ const router = createBrowserRouter([
         ['queues', 'Filas'],
         ['quick-replies', 'Respostas rápidas'],
         ['calls', 'Chamadas'],
-        ['docs', 'Documentação'],
         ['settings', 'Configurações'],
       ].map(([path, title]) => ({
         path,
@@ -123,6 +130,10 @@ const router = createBrowserRouter([
           Component: () => <FeaturePlaceholder title={title} />,
         }),
       })),
+      {
+        path: 'docs',
+        lazy: async () => ({ Component: (await import('../pages/docs')).Docs }),
+      },
     ],
   },
 ])
