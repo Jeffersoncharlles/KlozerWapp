@@ -54,6 +54,10 @@ func (uc *contactUseCase) GetByPhone(ctx context.Context, phone string) (*domain
 	return uc.repo.GetByPhone(ctx, phone)
 }
 
+func (uc *contactUseCase) GetByID(ctx context.Context, id string) (*domain.Contact, error) {
+	return uc.repo.GetByID(ctx, id)
+}
+
 func (uc *contactUseCase) List(ctx context.Context) ([]domain.Contact, error) {
 	return uc.repo.List(ctx)
 }

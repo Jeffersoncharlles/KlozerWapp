@@ -1,11 +1,12 @@
-import { useDroppable } from "@dnd-kit/core";
-import { SortableContext, verticalListSortingStrategy } from "@dnd-kit/sortable";
-import { Card, CardContent, CardHeader, CardTitle } from "../../../components/ui/card";
-import type { KanbanColumn as KanbanColumnType } from "../types";
-import { KanbanCardItem } from "./kanban-card-item";
+import { useDroppable } from '@dnd-kit/core'
+import { SortableContext, verticalListSortingStrategy } from '@dnd-kit/sortable'
+
+import { Card, CardContent, CardHeader, CardTitle } from '../../../components/ui/card'
+import type { KanbanColumn as KanbanColumnType } from '../types'
+import { KanbanCardItem } from './kanban-card-item'
 
 export function KanbanColumn({ column }: { column: KanbanColumnType }) {
-  const { isOver, setNodeRef } = useDroppable({ id: column.id });
+  const { isOver, setNodeRef } = useDroppable({ id: column.id })
 
   return (
     <Card className="min-h-[460px] border-border/70 bg-card/60">
@@ -17,15 +18,25 @@ export function KanbanColumn({ column }: { column: KanbanColumnType }) {
         </CardTitle>
       </CardHeader>
       <CardContent className="p-3">
-        <SortableContext items={column.cards.map((card) => card.id)} strategy={verticalListSortingStrategy}>
-          <div className={`min-h-24 space-y-3 rounded-lg transition-colors ${isOver ? "bg-muted/70" : ""}`} ref={setNodeRef}>
-            {column.cards.map((card) => <KanbanCardItem card={card} key={card.id} />)}
+        <SortableContext
+          items={column.cards.map((card) => card.id)}
+          strategy={verticalListSortingStrategy}
+        >
+          <div
+            className={`min-h-24 space-y-3 rounded-lg transition-colors ${isOver ? 'bg-muted/70' : ''}`}
+            ref={setNodeRef}
+          >
+            {column.cards.map((card) => (
+              <KanbanCardItem card={card} key={card.id} />
+            ))}
             {column.cards.length === 0 ? (
-              <p className="px-3 py-8 text-center text-xs text-muted-foreground">Solte um card aqui</p>
+              <p className="px-3 py-8 text-center text-xs text-muted-foreground">
+                Solte um card aqui
+              </p>
             ) : null}
           </div>
         </SortableContext>
       </CardContent>
     </Card>
-  );
+  )
 }

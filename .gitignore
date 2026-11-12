@@ -6,6 +6,8 @@
 *.key
 .txt
 docs/
+relatorio.png
+perfomace.md
 
 # Operating system
 .DS_Store

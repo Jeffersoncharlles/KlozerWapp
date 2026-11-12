@@ -35,6 +35,7 @@ type ContactRepository interface {
 
 type ContactUseCase interface {
 	CreateOrUpdate(ctx context.Context, phone, name, avatarURL string) (*Contact, error)
+	GetByID(ctx context.Context, id string) (*Contact, error)
 	GetByPhone(ctx context.Context, phone string) (*Contact, error)
 	List(ctx context.Context) ([]Contact, error)
 }

@@ -1,7 +1,7 @@
 export type SignInActionData = {
-  error?: string;
+  error?: string
   fieldErrors?: {
-    email?: string[];
-    password?: string[];
-  };
-};
+    email?: string[]
+    password?: string[]
+  }
+}

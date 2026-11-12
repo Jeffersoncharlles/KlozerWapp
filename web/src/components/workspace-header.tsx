@@ -1,17 +1,12 @@
-import { Bell, ChevronDown, Moon } from "lucide-react";
-import type { ReactNode } from "react";
-import { Button } from "./ui/button";
-import { Separator } from "./ui/separator";
-import { SidebarTrigger } from "./ui/sidebar";
-import { Avatar, AvatarFallback } from "./ui/avatar";
+import { Bell, ChevronDown, Moon } from 'lucide-react'
+import type { ReactNode } from 'react'
 
-export function WorkspaceHeader({
-  title,
-  description,
-}: {
-  title: string;
-  description?: string;
-}) {
+import { Avatar, AvatarFallback } from './ui/avatar'
+import { Button } from './ui/button'
+import { Separator } from './ui/separator'
+import { SidebarTrigger } from './ui/sidebar'
+
+export function WorkspaceHeader({ title, description }: { title: string; description?: string }) {
   return (
     <header className="flex min-h-16 items-center gap-3 border-b border-border bg-card px-4 sm:px-6">
       <SidebarTrigger />
@@ -19,9 +14,7 @@ export function WorkspaceHeader({
       <div className="min-w-0 flex-1">
         <p className="truncate text-sm font-semibold">{title}</p>
         {description && (
-          <p className="hidden truncate text-xs text-muted-foreground sm:block">
-            {description}
-          </p>
+          <p className="hidden truncate text-xs text-muted-foreground sm:block">{description}</p>
         )}
       </div>
       <Button variant="outline" size="sm" className="hidden sm:inline-flex">
@@ -39,11 +32,11 @@ export function WorkspaceHeader({
         <AvatarFallback>JC</AvatarFallback>
       </Avatar>
     </header>
-  );
+  )
 }
 
 export function PageContainer({ children }: { children: ReactNode }) {
-  return <div className="min-h-svh bg-background">{children}</div>;
+  return <div className="min-h-svh bg-background">{children}</div>
 }
 
 export function EmptyStateIcon({ children }: { children: ReactNode }) {
@@ -51,5 +44,5 @@ export function EmptyStateIcon({ children }: { children: ReactNode }) {
     <div className="flex size-10 items-center justify-center rounded-xl bg-emerald-400/10 text-emerald-400">
       {children}
     </div>
-  );
+  )
 }

@@ -15,18 +15,22 @@ import (
 
 // RouterHandlers agrupa todos os controllers. Injetado pelo Wire!
 type RouterHandlers struct {
-	Auth       *handler.AuthHandler
-	Kanban     *handler.KanbanHandler
-	Message    *handler.MessageHandler
-	QuickReply *handler.QuickReplyHandler
-	Tag        *handler.TagHandler
-	Session    *handler.SessionHandler
-	Flow       *handler.FlowHandler
-	Queue      *handler.QueueHandler
-	Report     *handler.ReportHandler
-	Campaign   *handler.CampaignHandler
-	Call       *handler.CallHandler
-	Docs       *handler.DocsHandler
+	Auth                  *handler.AuthHandler
+	Kanban                *handler.KanbanHandler
+	Message               *handler.MessageHandler
+	Conversation          *handler.ConversationHandler
+	QuickReply            *handler.QuickReplyHandler
+	Tag                   *handler.TagHandler
+	TagKanbanRule         *handler.TagKanbanRuleHandler
+	Session               *handler.SessionHandler
+	WhatsAppConfiguration *handler.WhatsAppConfigurationHandler
+	Flow                  *handler.FlowHandler
+	Queue                 *handler.QueueHandler
+	QueueAssignment       *handler.QueueAssignmentHandler
+	Report                *handler.ReportHandler
+	Campaign              *handler.CampaignHandler
+	Call                  *handler.CallHandler
+	Docs                  *handler.DocsHandler
 }
 
 // Note que agora injetamos o tokenAuth (*jwtauth.JWTAuth) gerado pelo Wire
@@ -68,15 +72,18 @@ func NewRouter(h RouterHandlers, tokenAuth *jwtauth.JWTAuth) http.Handler {
 			r.Use(jwtauth.Verifier(tokenAuth))
 			r.Use(jwtauth.Authenticator(tokenAuth))
 
-			h.Kanban.RegisterRoutes(r)     // /v1/api/kanban/*
-			h.Message.RegisterRoutes(r)    // /v1/api/messages/*
-			h.QuickReply.RegisterRoutes(r) // /v1/api/quick-replies/*
-			h.Tag.RegisterRoutes(r)        // /v1/api/tags/*
-			h.Flow.RegisterRoutes(r)       // /v1/api/flows/*
-			h.Queue.RegisterRoutes(r)      // /v1/api/queues/*
-			h.Report.RegisterRoutes(r)     // /v1/api/reports/*
-			h.Campaign.RegisterRoutes(r)   // /v1/api/campaigns/*
-			h.Call.RegisterRoutes(r)       // /v1/api/calls/*
+			h.Kanban.RegisterRoutes(r)        // /v1/api/kanban/*
+			h.Message.RegisterRoutes(r)       // /v1/api/messages/*
+			h.Conversation.RegisterRoutes(r)  // /v1/api/conversations/*
+			h.QuickReply.RegisterRoutes(r)    // /v1/api/quick-replies/*
+			h.Tag.RegisterRoutes(r)           // /v1/api/tags/*
+			h.TagKanbanRule.RegisterRoutes(r) // /v1/api/tag-kanban-rules/*
+			h.Flow.RegisterRoutes(r)          // /v1/api/flows/*
+			h.Queue.RegisterRoutes(r)         // /v1/api/queues/*
+			h.QueueAssignment.RegisterRoutes(r)
+			h.Report.RegisterRoutes(r)   // /v1/api/reports/*
+			h.Campaign.RegisterRoutes(r) // /v1/api/campaigns/*
+			h.Call.RegisterRoutes(r)     // /v1/api/calls/*
 		})
 
 		// 2.3 Rotas Restritas (Apenas ADMIN)
@@ -86,7 +93,8 @@ func NewRouter(h RouterHandlers, tokenAuth *jwtauth.JWTAuth) http.Handler {
 			r.Use(middleware.RequireAdmin) // Nosso middleware para checar a role "ADMIN"
 
 			// Ex: Somente o dono/admin da clínica/loja pode ler o QR Code ou derrubar a sessão
-			h.Session.RegisterRoutes(r) // /v1/api/sessions/*
+			h.Session.RegisterRoutes(r)               // /v1/api/sessions/*
+			h.WhatsAppConfiguration.RegisterRoutes(r) // /v1/api/sessions/configuration
 		})
 	})
 

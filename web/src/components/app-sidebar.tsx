@@ -1,4 +1,3 @@
-import { NavLink } from "react-router";
 import {
   ChevronRight,
   BarChart3,
@@ -14,7 +13,10 @@ import {
   Settings,
   UsersRound,
   Zap,
-} from "lucide-react";
+} from 'lucide-react'
+import { NavLink } from 'react-router'
+
+import { Avatar, AvatarFallback } from './ui/avatar'
 import {
   Sidebar,
   SidebarContent,
@@ -27,37 +29,30 @@ import {
   SidebarMenuButton,
   SidebarMenuItem,
   SidebarSeparator,
-} from "./ui/sidebar";
-import { Avatar, AvatarFallback } from "./ui/avatar";
+} from './ui/sidebar'
 
 const mainNavigation = [
-  { title: "Visão geral", href: "/dashboard", icon: LayoutDashboard },
-  { title: "Conversas", href: "/dashboard/conversations", icon: MessageCircle },
-  { title: "Contatos", href: "/dashboard/contacts", icon: ContactRound },
-  { title: "Filas", href: "/dashboard/queues", icon: UsersRound },
-  { title: "Kanban", href: "/dashboard/kanban", icon: Kanban },
-];
+  { title: 'Visão geral', href: '/dashboard', icon: LayoutDashboard },
+  { title: 'Conversas', href: '/dashboard/conversations', icon: MessageCircle },
+  { title: 'Contatos', href: '/dashboard/contacts', icon: ContactRound },
+  { title: 'Filas', href: '/dashboard/queues', icon: UsersRound },
+  { title: 'Kanban', href: '/dashboard/kanban', icon: Kanban },
+]
 
 const operationsNavigation = [
-  { title: "WhatsApp", href: "/dashboard/whatsapp", icon: PlugZap },
-  { title: "Respostas rápidas", href: "/dashboard/quick-replies", icon: Zap },
-  { title: "Automações", href: "/dashboard/automations", icon: Bot },
-  { title: "Campanhas", href: "/dashboard/campaigns", icon: Megaphone },
-  { title: "Chamadas", href: "/dashboard/calls", icon: Phone },
-];
+  { title: 'WhatsApp', href: '/dashboard/whatsapp', icon: PlugZap },
+  { title: 'Respostas rápidas', href: '/dashboard/quick-replies', icon: Zap },
+  { title: 'Automações', href: '/dashboard/automations', icon: Bot },
+  { title: 'Campanhas', href: '/dashboard/campaigns', icon: Megaphone },
+  { title: 'Chamadas', href: '/dashboard/calls', icon: Phone },
+]
 
 const analysisNavigation = [
-  { title: "Relatórios", href: "/dashboard/reports", icon: BarChart3 },
-  { title: "Documentação", href: "/dashboard/docs", icon: FileText },
-];
+  { title: 'Relatórios', href: '/dashboard/reports', icon: BarChart3 },
+  { title: 'Documentação', href: '/dashboard/docs', icon: FileText },
+]
 
-function NavigationGroup({
-  label,
-  items,
-}: {
-  label: string;
-  items: typeof mainNavigation;
-}) {
+function NavigationGroup({ label, items }: { label: string; items: typeof mainNavigation }) {
   return (
     <SidebarGroup>
       <SidebarGroupLabel>{label}</SidebarGroupLabel>
@@ -65,10 +60,7 @@ function NavigationGroup({
         <SidebarMenu>
           {items.map(({ title, href, icon: Icon }) => (
             <SidebarMenuItem key={href}>
-              <SidebarMenuButton
-                tooltip={title}
-                render={<NavLink to={href} />}
-              >
+              <SidebarMenuButton tooltip={title} render={<NavLink to={href} />}>
                 <Icon />
                 <span>{title}</span>
               </SidebarMenuButton>
@@ -77,7 +69,7 @@ function NavigationGroup({
         </SidebarMenu>
       </SidebarGroupContent>
     </SidebarGroup>
-  );
+  )
 }
 
 export function AppSidebar() {
@@ -96,7 +88,10 @@ export function AppSidebar() {
       </SidebarHeader>
       <div className="mx-3 mb-1 flex items-center gap-2 rounded-lg bg-secondary px-3 py-2 group-data-[collapsible=icon]:mx-2 group-data-[collapsible=icon]:size-8 group-data-[collapsible=icon]:justify-center group-data-[collapsible=icon]:p-0">
         <span className="size-2 shrink-0 rounded-full bg-emerald-500" />
-        <div className="min-w-0 flex-1 group-data-[collapsible=icon]:hidden"><p className="truncate text-xs font-semibold">WhatsApp conectado</p><p className="truncate text-[10px] text-sidebar-foreground/60">Sessão principal online</p></div>
+        <div className="min-w-0 flex-1 group-data-[collapsible=icon]:hidden">
+          <p className="truncate text-xs font-semibold">WhatsApp conectado</p>
+          <p className="truncate text-[10px] text-sidebar-foreground/60">Sessão principal online</p>
+        </div>
         <ChevronRight className="size-4 text-sidebar-foreground/60 group-data-[collapsible=icon]:hidden" />
       </div>
       <SidebarSeparator className="mx-3 w-auto" />
@@ -109,7 +104,10 @@ export function AppSidebar() {
         <SidebarSeparator className="mb-3" />
         <SidebarMenu>
           <SidebarMenuItem>
-            <SidebarMenuButton tooltip="Configurações" render={<NavLink to="/dashboard/settings" />}>
+            <SidebarMenuButton
+              tooltip="Configurações"
+              render={<NavLink to="/dashboard/settings" />}
+            >
               <Settings />
               <span>Configurações</span>
             </SidebarMenuButton>
@@ -128,5 +126,5 @@ export function AppSidebar() {
         </SidebarMenu>
       </SidebarFooter>
     </Sidebar>
-  );
+  )
 }

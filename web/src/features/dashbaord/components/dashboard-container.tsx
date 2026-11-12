@@ -1,6 +1,6 @@
-import { DashboardHeader } from "./dashboard-header";
-import { DashboardOverview } from "./dashboard-overview";
-import type { DashboardLoaderData } from "../types";
+import type { DashboardLoaderData } from '../types'
+import { DashboardHeader } from './dashboard-header'
+import { DashboardOverview } from './dashboard-overview'
 
 export function DashboardContainer({ data }: { data: DashboardLoaderData }) {
   return (
@@ -8,5 +8,5 @@ export function DashboardContainer({ data }: { data: DashboardLoaderData }) {
       <DashboardHeader />
       <DashboardOverview data={data} />
     </div>
-  );
+  )
 }

@@ -46,12 +46,12 @@ func InitializeApp(cfg *config.Config) (*App, func(), error) {
 		cleanup()
 		return nil, nil, err
 	}
-	runtime, cleanup2, err := whatsapp.ProvideWhatsmeowRuntime(db)
+	whatsAppRuntime, cleanup2, err := whatsapp.ProvideWhatsmeowRuntime(db)
 	if err != nil {
 		cleanup()
 		return nil, nil, err
 	}
-	whatsAppGateway := whatsapp.NewWhatsAppManager(runtime)
+	whatsAppGateway := whatsapp.NewWhatsAppManager(whatsAppRuntime)
 	autoReplyUseCase := usecase.NewAutoReplyUseCase(whatsAppGateway, messageRepository)
 	flowRuntimeStore := sqlite.NewFlowRuntimeStore(gormProvider)
 	flowRepository := sqlite.NewFlowRepository(gormProvider)
@@ -61,18 +61,26 @@ func InitializeApp(cfg *config.Config) (*App, func(), error) {
 	flowRuntimeUseCase := usecase.NewFlowRuntime(flowRuntimeStore, flowRepository, flowSender, flowHTTPClient, contactUseCase, autoReplyUseCase)
 	chatUseCase := usecase.NewChatUseCase(messageRepository, contactUseCase, kanbanUseCase, autoReplyUseCase, flowRuntimeUseCase, broker, whatsAppGateway)
 	messageHandler := handler.NewMessageHandler(chatUseCase)
+	conversationHandler := handler.NewConversationHandler(chatUseCase, broker)
 	quickReplyRepository := sqlite.NewQuickReplyRepository(gormProvider)
 	quickReplyUseCase := usecase.NewQuickReplyUseCase(quickReplyRepository)
 	quickReplyHandler := handler.NewQuickReplyHandler(quickReplyUseCase)
 	tagRepository := sqlite.NewTagRepository(gormProvider)
-	tagUseCase := usecase.NewTagUseCase(tagRepository, kanbanUseCase, broker)
+	tagKanbanRuleRepository := sqlite.NewTagKanbanRuleRepository(gormProvider)
+	tagUseCase := usecase.NewTagUseCase(tagRepository, tagKanbanRuleRepository, broker)
 	tagHandler := handler.NewTagHandler(tagUseCase)
+	tagKanbanRuleUseCase := usecase.NewTagKanbanRuleUseCase(tagKanbanRuleRepository, tagRepository, kanbanRepository)
+	tagKanbanRuleHandler := handler.NewTagKanbanRuleHandler(tagKanbanRuleUseCase)
 	flowUseCase := usecase.NewFlowUseCase(flowRepository)
 	sessionHandler := handler.NewSessionHandler(whatsAppGateway, broker, flowUseCase)
-	flowHandler := handler.NewFlowHandler(flowUseCase, flowRuntimeUseCase)
+	whatsAppConfigurationRepository := sqlite.NewWhatsAppConfigurationRepository(gormProvider)
 	queueRepository := sqlite.NewQueueRepository(gormProvider)
+	whatsAppConfigurationUseCase := usecase.NewWhatsAppConfigurationUseCase(whatsAppConfigurationRepository, flowRepository, queueRepository)
+	whatsAppConfigurationHandler := handler.NewWhatsAppConfigurationHandler(whatsAppConfigurationUseCase)
+	flowHandler := handler.NewFlowHandler(flowUseCase, flowRuntimeUseCase)
 	queueUseCase := usecase.NewQueueUseCase(queueRepository)
 	queueHandler := handler.NewQueueHandler(queueUseCase)
+	queueAssignmentHandler := handler.NewQueueAssignmentHandler(queueUseCase, kanbanUseCase)
 	reportRepository := sqlite.NewReportRepository(gormProvider)
 	reportUseCase := usecase.NewReportUseCase(reportRepository)
 	reportHandler := handler.NewReportHandler(reportUseCase)
@@ -84,21 +92,25 @@ func InitializeApp(cfg *config.Config) (*App, func(), error) {
 	callHandler := handler.NewCallHandler(callUseCase)
 	docsHandler := handler.NewDocsHandler()
 	routerHandlers := http.RouterHandlers{
-		Auth:       authHandler,
-		Kanban:     kanbanHandler,
-		Message:    messageHandler,
-		QuickReply: quickReplyHandler,
-		Tag:        tagHandler,
-		Session:    sessionHandler,
-		Flow:       flowHandler,
-		Queue:      queueHandler,
-		Report:     reportHandler,
-		Campaign:   campaignHandler,
-		Call:       callHandler,
-		Docs:       docsHandler,
+		Auth:                  authHandler,
+		Kanban:                kanbanHandler,
+		Message:               messageHandler,
+		Conversation:          conversationHandler,
+		QuickReply:            quickReplyHandler,
+		Tag:                   tagHandler,
+		TagKanbanRule:         tagKanbanRuleHandler,
+		Session:               sessionHandler,
+		WhatsAppConfiguration: whatsAppConfigurationHandler,
+		Flow:                  flowHandler,
+		Queue:                 queueHandler,
+		QueueAssignment:       queueAssignmentHandler,
+		Report:                reportHandler,
+		Campaign:              campaignHandler,
+		Call:                  callHandler,
+		Docs:                  docsHandler,
 	}
 	httpHandler := http.NewRouter(routerHandlers, jwtAuth)
-	whatsAppListener, cleanup4 := whatsapp.NewWhatsAppListener(runtime, chatUseCase)
+	whatsAppListener, cleanup4 := whatsapp.NewWhatsAppListener(whatsAppRuntime, chatUseCase)
 	app, cleanup5 := NewApp(httpHandler, whatsAppListener, flowRuntimeUseCase)
 	return app, func() {
 		cleanup5()
@@ -126,11 +138,11 @@ var InfraHTTPClientSet = wire.NewSet(httpclient.NewFlowClient)
 
 var InfraSSESet = wire.NewSet(sse.NewBroker, wire.Bind(new(domain.Broker), new(*sse.Broker)))
 
-var RepositorySet = wire.NewSet(sqlite.NewGormProvider, sqlite.ProvideSQLDB, sqlite.NewUserRepository, sqlite.NewKanbanRepository, sqlite.NewMessageRepository, sqlite.NewQuickReplyRepository, sqlite.NewTagRepository, sqlite.NewContactRepository, sqlite.NewFlowRepository, sqlite.NewFlowRuntimeStore, sqlite.NewQueueRepository, sqlite.NewReportRepository, sqlite.NewCampaignRepository, sqlite.NewCallRepository)
+var RepositorySet = wire.NewSet(sqlite.NewGormProvider, sqlite.ProvideSQLDB, sqlite.NewUserRepository, sqlite.NewKanbanRepository, sqlite.NewMessageRepository, sqlite.NewQuickReplyRepository, sqlite.NewTagRepository, sqlite.NewTagKanbanRuleRepository, sqlite.NewContactRepository, sqlite.NewFlowRepository, sqlite.NewFlowRuntimeStore, sqlite.NewWhatsAppConfigurationRepository, sqlite.NewQueueRepository, sqlite.NewReportRepository, sqlite.NewCampaignRepository, sqlite.NewCallRepository)
 
-var UseCaseSet = wire.NewSet(usecase.NewAuthUseCase, usecase.NewUserUseCase, usecase.NewKanbanUseCase, usecase.NewChatUseCase, usecase.NewQuickReplyUseCase, usecase.NewAutoReplyUseCase, usecase.NewContactUseCase, usecase.NewTagUseCase, usecase.NewFlowUseCase, usecase.NewFlowRuntime, usecase.NewFlowSender, usecase.NewQueueUseCase, usecase.NewReportUseCase, usecase.NewCampaignUseCase, usecase.NewCallUseCase)
+var UseCaseSet = wire.NewSet(usecase.NewAuthUseCase, usecase.NewUserUseCase, usecase.NewKanbanUseCase, usecase.NewChatUseCase, usecase.NewQuickReplyUseCase, usecase.NewAutoReplyUseCase, usecase.NewContactUseCase, usecase.NewTagUseCase, usecase.NewTagKanbanRuleUseCase, usecase.NewFlowUseCase, usecase.NewFlowRuntime, usecase.NewFlowSender, usecase.NewWhatsAppConfigurationUseCase, usecase.NewQueueUseCase, usecase.NewReportUseCase, usecase.NewCampaignUseCase, usecase.NewCallUseCase)
 
-var HandlerSet = wire.NewSet(handler.NewAuthHandler, handler.NewKanbanHandler, handler.NewMessageHandler, handler.NewQuickReplyHandler, handler.NewTagHandler, handler.NewSessionHandler, handler.NewFlowHandler, handler.NewQueueHandler, handler.NewReportHandler, handler.NewCampaignHandler, handler.NewCallHandler, handler.NewDocsHandler, wire.Struct(new(http.RouterHandlers), "*"))
+var HandlerSet = wire.NewSet(handler.NewAuthHandler, handler.NewKanbanHandler, handler.NewMessageHandler, handler.NewConversationHandler, handler.NewQuickReplyHandler, handler.NewTagHandler, handler.NewTagKanbanRuleHandler, handler.NewSessionHandler, handler.NewWhatsAppConfigurationHandler, handler.NewFlowHandler, handler.NewQueueHandler, handler.NewQueueAssignmentHandler, handler.NewReportHandler, handler.NewCampaignHandler, handler.NewCallHandler, handler.NewDocsHandler, wire.Struct(new(http.RouterHandlers), "*"))
 
 // App agrupa os serviços principais que precisam ficar rodando
 type App struct {

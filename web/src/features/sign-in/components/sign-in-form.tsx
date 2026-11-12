@@ -1,15 +1,16 @@
-import { Form, useActionData, useNavigation } from "react-router";
-import { ArrowRight, Eye, LockKeyhole, Mail } from "lucide-react";
-import { Button } from "../../../components/ui/button";
-import { Card, CardContent, CardHeader, CardTitle } from "../../../components/ui/card";
-import { Field, FieldError, FieldGroup, FieldLabel } from "../../../components/ui/field";
-import { Input } from "../../../components/ui/input";
-import type { SignInActionData } from "../types";
+import { ArrowRight, Eye, LockKeyhole, Mail } from 'lucide-react'
+import { Form, useActionData, useNavigation } from 'react-router'
+
+import { Button } from '../../../components/ui/button'
+import { Card, CardContent, CardHeader, CardTitle } from '../../../components/ui/card'
+import { Field, FieldError, FieldGroup, FieldLabel } from '../../../components/ui/field'
+import { Input } from '../../../components/ui/input'
+import type { SignInActionData } from '../types'
 
 export function SignInForm() {
-  const actionData = useActionData<SignInActionData>();
-  const navigation = useNavigation();
-  const isSubmitting = navigation.state === "submitting";
+  const actionData = useActionData<SignInActionData>()
+  const navigation = useNavigation()
+  const isSubmitting = navigation.state === 'submitting'
 
   return (
     <Card className="w-full max-w-[27.5rem] gap-6 border-border bg-card py-9 shadow-xl shadow-slate-950/10">
@@ -39,16 +40,17 @@ export function SignInForm() {
                 />
               </div>
               {actionData?.fieldErrors?.email?.[0] && (
-                <FieldError id="email-error">
-                  {actionData.fieldErrors.email[0]}
-                </FieldError>
+                <FieldError id="email-error">{actionData.fieldErrors.email[0]}</FieldError>
               )}
             </Field>
 
             <Field data-invalid={Boolean(actionData?.fieldErrors?.password)}>
               <div className="flex items-center justify-between gap-4">
                 <FieldLabel htmlFor="password">Senha</FieldLabel>
-                <a className="text-xs font-semibold text-primary hover:underline" href="#recuperar-senha">
+                <a
+                  className="text-xs font-semibold text-primary hover:underline"
+                  href="#recuperar-senha"
+                >
                   Esqueci minha senha
                 </a>
               </div>
@@ -68,9 +70,7 @@ export function SignInForm() {
                 <Eye className="pointer-events-none absolute top-1/2 right-3 size-4 -translate-y-1/2 text-muted-foreground" />
               </div>
               {actionData?.fieldErrors?.password?.[0] && (
-                <FieldError id="password-error">
-                  {actionData.fieldErrors.password[0]}
-                </FieldError>
+                <FieldError id="password-error">{actionData.fieldErrors.password[0]}</FieldError>
               )}
             </Field>
           </FieldGroup>
@@ -85,7 +85,7 @@ export function SignInForm() {
           )}
 
           <Button className="h-11 w-full font-semibold" disabled={isSubmitting} type="submit">
-            {isSubmitting ? "Entrando..." : "Entrar na plataforma"}
+            {isSubmitting ? 'Entrando...' : 'Entrar na plataforma'}
             {!isSubmitting && <ArrowRight className="size-4" />}
           </Button>
         </Form>
@@ -94,5 +94,5 @@ export function SignInForm() {
         </p>
       </CardContent>
     </Card>
-  );
+  )
 }

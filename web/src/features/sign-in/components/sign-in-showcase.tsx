@@ -1,33 +1,33 @@
-import { BarChart3, KanbanSquare, MessageCircleMore, Sparkles } from "lucide-react";
+import { BarChart3, KanbanSquare, MessageCircleMore, Sparkles } from 'lucide-react'
 
 const highlights = [
   {
     icon: MessageCircleMore,
-    title: "Atendimento centralizado",
-    description: "Todas as conversas em um único lugar.",
+    title: 'Atendimento centralizado',
+    description: 'Todas as conversas em um único lugar.',
   },
   {
     icon: KanbanSquare,
-    title: "Kanban de oportunidades",
-    description: "Visualize cada negociação com clareza.",
+    title: 'Kanban de oportunidades',
+    description: 'Visualize cada negociação com clareza.',
   },
   {
     icon: Sparkles,
-    title: "Automações inteligentes",
-    description: "Ganhe escala sem perder o cuidado.",
+    title: 'Automações inteligentes',
+    description: 'Ganhe escala sem perder o cuidado.',
   },
   {
     icon: BarChart3,
-    title: "Relatórios em tempo real",
-    description: "Decida com dados que acompanham você.",
+    title: 'Relatórios em tempo real',
+    description: 'Decida com dados que acompanham você.',
   },
-];
+]
 
 const metrics = [
-  ["12k+", "conversas por dia"],
-  ["38%", "mais agilidade"],
-  ["99,9%", "de disponibilidade"],
-];
+  ['12k+', 'conversas por dia'],
+  ['38%', 'mais agilidade'],
+  ['99,9%', 'de disponibilidade'],
+]
 
 export function SignInShowcase() {
   return (
@@ -48,25 +48,19 @@ export function SignInShowcase() {
           Transforme conversas em relacionamentos que crescem.
         </h1>
         <p className="mt-5 text-base leading-7 text-primary-foreground/80">
-          Organize sua operação, responda mais rápido e acompanhe cada
-          oportunidade em um só lugar.
+          Organize sua operação, responda mais rápido e acompanhe cada oportunidade em um só lugar.
         </p>
       </div>
 
       <div className="relative mt-10 grid max-w-xl gap-3">
         {highlights.map(({ icon: Icon, title, description }) => (
-          <div
-            key={title}
-            className="flex items-center gap-3 rounded-xl bg-white/10 px-4 py-3"
-          >
+          <div key={title} className="flex items-center gap-3 rounded-xl bg-white/10 px-4 py-3">
             <div className="flex size-9 shrink-0 items-center justify-center rounded-lg bg-white/10">
               <Icon className="size-4" />
             </div>
             <div>
               <h2 className="text-sm font-semibold">{title}</h2>
-              <p className="mt-0.5 text-xs text-primary-foreground/75">
-                {description}
-              </p>
+              <p className="mt-0.5 text-xs text-primary-foreground/75">{description}</p>
             </div>
           </div>
         ))}
@@ -81,5 +75,5 @@ export function SignInShowcase() {
         ))}
       </div>
     </section>
-  );
+  )
 }
