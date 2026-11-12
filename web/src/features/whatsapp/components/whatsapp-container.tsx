@@ -1,11 +1,11 @@
-import { CheckCircle2, LoaderCircle, LogOut, QrCode, RefreshCw, Smartphone, Wifi, WifiOff } from "lucide-react";
+import { CheckCircle2, LoaderCircle, LogOut, QrCode, RefreshCw, Smartphone, Unplug, Wifi, WifiOff } from "lucide-react";
 import { QRCodeSVG } from "qrcode.react";
 import { useEffect, useState } from "react";
 import { useRevalidator } from "react-router";
 import { Button } from "../../../components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "../../../components/ui/card";
 import { PageContainer, WorkspaceHeader } from "../../../components/workspace-header";
-import { connectWhatsApp, disconnectWhatsApp, subscribeToEvents } from "../services/whatsapp-service";
+import { connectWhatsApp, disconnectWhatsApp, logoutWhatsApp, subscribeToEvents } from "../services/whatsapp-service";
 import type { WhatsAppLoaderData } from "../types";
 
 function isConnected(status?: string) {
@@ -42,7 +42,7 @@ export function WhatsAppContainer({ data }: { data: WhatsAppLoaderData }) {
     return () => controller.abort();
   }, [connected, revalidate]);
 
-  async function handleConnection(action: "connect" | "disconnect") {
+  async function handleConnection(action: "connect" | "disconnect" | "logout") {
     setActionError(undefined);
     if (action === "connect") {
       setQRCode(undefined);
@@ -52,8 +52,10 @@ export function WhatsAppContainer({ data }: { data: WhatsAppLoaderData }) {
     try {
       if (action === "connect") {
         await connectWhatsApp();
-      } else {
+      } else if (action === "disconnect") {
         await disconnectWhatsApp();
+      } else {
+        await logoutWhatsApp();
       }
 
       revalidate();
@@ -112,10 +114,16 @@ export function WhatsAppContainer({ data }: { data: WhatsAppLoaderData }) {
 
               <div className="mt-5 flex flex-wrap gap-2">
                 {connected ? (
-                  <Button variant="destructive" onClick={() => handleConnection("disconnect")} disabled={isSubmitting}>
-                    {isSubmitting ? <LoaderCircle className="size-4 animate-spin" /> : <LogOut className="size-4" />}
-                    Desconectar aparelho
-                  </Button>
+                  <>
+                    <Button variant="outline" onClick={() => handleConnection("disconnect")} disabled={isSubmitting}>
+                      {isSubmitting ? <LoaderCircle className="size-4 animate-spin" /> : <Unplug className="size-4" />}
+                      Desconectar sessão
+                    </Button>
+                    <Button variant="destructive" onClick={() => handleConnection("logout")} disabled={isSubmitting}>
+                      {isSubmitting ? <LoaderCircle className="size-4 animate-spin" /> : <LogOut className="size-4" />}
+                      Remover aparelho
+                    </Button>
+                  </>
                 ) : (
                   <Button onClick={() => handleConnection("connect")} disabled={isSubmitting}>
                     {isSubmitting ? <LoaderCircle className="size-4 animate-spin" /> : <QrCode className="size-4" />}

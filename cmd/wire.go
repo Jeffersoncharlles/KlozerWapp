@@ -40,7 +40,7 @@ var ConfigSet = wire.NewSet(
 )
 
 var InfraWhatsAppSet = wire.NewSet(
-	whatsapp.ProvideWhatsmeowClient,
+	whatsapp.ProvideWhatsmeowRuntime,
 	whatsapp.NewWhatsAppManager,
 	whatsapp.NewWhatsAppListener,
 )

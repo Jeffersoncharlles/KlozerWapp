@@ -46,12 +46,12 @@ func InitializeApp(cfg *config.Config) (*App, func(), error) {
 		cleanup()
 		return nil, nil, err
 	}
-	client, cleanup2, err := whatsapp.ProvideWhatsmeowClient(db)
+	runtime, cleanup2, err := whatsapp.ProvideWhatsmeowRuntime(db)
 	if err != nil {
 		cleanup()
 		return nil, nil, err
 	}
-	whatsAppGateway := whatsapp.NewWhatsAppManager(client)
+	whatsAppGateway := whatsapp.NewWhatsAppManager(runtime)
 	autoReplyUseCase := usecase.NewAutoReplyUseCase(whatsAppGateway, messageRepository)
 	flowRuntimeStore := sqlite.NewFlowRuntimeStore(gormProvider)
 	flowRepository := sqlite.NewFlowRepository(gormProvider)
@@ -98,7 +98,7 @@ func InitializeApp(cfg *config.Config) (*App, func(), error) {
 		Docs:       docsHandler,
 	}
 	httpHandler := http.NewRouter(routerHandlers, jwtAuth)
-	whatsAppListener, cleanup4 := whatsapp.NewWhatsAppListener(client, chatUseCase)
+	whatsAppListener, cleanup4 := whatsapp.NewWhatsAppListener(runtime, chatUseCase)
 	app, cleanup5 := NewApp(httpHandler, whatsAppListener, flowRuntimeUseCase)
 	return app, func() {
 		cleanup5()
@@ -120,7 +120,7 @@ var ConfigSet = wire.NewSet(
 	ProvideJWTAuth,
 )
 
-var InfraWhatsAppSet = wire.NewSet(whatsapp.ProvideWhatsmeowClient, whatsapp.NewWhatsAppManager, whatsapp.NewWhatsAppListener)
+var InfraWhatsAppSet = wire.NewSet(whatsapp.ProvideWhatsmeowRuntime, whatsapp.NewWhatsAppManager, whatsapp.NewWhatsAppListener)
 
 var InfraHTTPClientSet = wire.NewSet(httpclient.NewFlowClient)
 
