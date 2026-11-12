@@ -55,7 +55,11 @@ export async function connectWhatsApp() {
 }
 
 export async function disconnectWhatsApp() {
-  await request("/sessions/disconnect", undefined, "POST");
+	await request("/sessions/disconnect", undefined, "POST");
+}
+
+export async function logoutWhatsApp() {
+	await request("/sessions/logout", connectionMessageSchema, "POST");
 }
 
 // 👇 2. Adicionamos o "onConnected" como um callback para a UI saber a hora de atualizar

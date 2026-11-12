@@ -56,6 +56,7 @@ func (h *SessionHandler) RegisterRoutes(r chi.Router) {
 		// 👇 AS ROTAS QUE FALTAVAM 👇
 		r.Post("/connect", h.Connect)
 		r.Post("/disconnect", h.Disconnect)
+		r.Post("/logout", h.Logout)
 	})
 }
 
@@ -111,6 +112,20 @@ func (h *SessionHandler) Disconnect(w http.ResponseWriter, r *http.Request) {
 	}
 
 	response.JSON(w, http.StatusOK, map[string]string{
-		"message": "Sessão do WhatsApp desconectada com sucesso.",
+		"message": "Sessão do WhatsApp pausada com sucesso.",
+	})
+}
+
+// Logout remove este aparelho da lista de aparelhos conectados do WhatsApp.
+func (h *SessionHandler) Logout(w http.ResponseWriter, r *http.Request) {
+	if err := h.waGateway.Logout(r.Context()); err != nil {
+		response.JSON(w, http.StatusInternalServerError, map[string]string{
+			"error": "Falha ao remover o aparelho: " + err.Error(),
+		})
+		return
+	}
+
+	response.JSON(w, http.StatusOK, map[string]string{
+		"message": "Aparelho removido dos aparelhos conectados do WhatsApp.",
 	})
 }

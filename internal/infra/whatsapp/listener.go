@@ -7,12 +7,11 @@ import (
 	"sync"
 
 	"github.com/Jeffersoncharlles/KlozerWapp/internal/domain"
-	"go.mau.fi/whatsmeow"
 	"go.mau.fi/whatsmeow/types/events"
 )
 
 type WhatsAppListener struct {
-	client  *whatsmeow.Client
+	runtime *WhatsAppRuntime
 	chatUC  domain.ChatUseCase
 	ctx     context.Context
 	mu      sync.Mutex
@@ -20,23 +19,23 @@ type WhatsAppListener struct {
 	wg      sync.WaitGroup
 }
 
-func NewWhatsAppListener(client *whatsmeow.Client, chat domain.ChatUseCase) (*WhatsAppListener, func()) {
+func NewWhatsAppListener(runtime *WhatsAppRuntime, chat domain.ChatUseCase) (*WhatsAppListener, func()) {
 	ctx, cancel := context.WithCancel(context.Background())
-	l := &WhatsAppListener{client: client, chatUC: chat, ctx: ctx}
-	id := client.AddEventHandlerWithSuccessStatus(l.eventHandler)
+	l := &WhatsAppListener{runtime: runtime, chatUC: chat, ctx: ctx}
+	runtime.AddEventHandlerWithSuccessStatus(l.eventHandler)
 	return l, func() {
 		l.mu.Lock()
 		l.stopped = true
 		l.mu.Unlock()
 		cancel()
-		client.RemoveEventHandler(id)
 		l.wg.Wait()
 	}
 }
 
 func (l *WhatsAppListener) eventHandler(evt interface{}) bool {
 	v, ok := evt.(*events.Message)
-	if !ok || v.Info.IsFromMe || v.Info.IsGroup || l.client.Store.ID == nil {
+	client := l.runtime.Current()
+	if !ok || v.Info.IsFromMe || v.Info.IsGroup || client.Store.ID == nil {
 		return true
 	}
 	l.mu.Lock()
@@ -70,7 +69,7 @@ func (l *WhatsAppListener) eventHandler(evt interface{}) bool {
 	if content == "" {
 		content = "[Mídia Recebida]"
 	}
-	e := domain.FlowIncoming{ID: string(v.Info.ID), ConnectionID: l.client.Store.ID.String(), ChatID: v.Info.Chat.String(), Phone: v.Info.Sender.String(), Text: content, OptionID: option, Timestamp: v.Info.Timestamp}
+	e := domain.FlowIncoming{ID: string(v.Info.ID), ConnectionID: client.Store.ID.String(), ChatID: v.Info.Chat.String(), Phone: v.Info.Sender.String(), Text: content, OptionID: option, Timestamp: v.Info.Timestamp}
 	// Persist before returning; no lossy in-memory queue between the protocol
 	// event and the durable inbox. The runtime worker performs network effects.
 	if err := l.chatUC.HandleIncomingMessage(l.ctx, e); err != nil {

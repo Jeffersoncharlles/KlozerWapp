@@ -16,6 +16,7 @@ type WhatsAppGateway interface {
 	// Gerenciamento da Conexão
 	Connect(ctx context.Context) error
 	Disconnect(ctx context.Context) error
+	Logout(ctx context.Context) error
 
 	// Estado e QRCode (Canal para enviar SSE/WebSocket pro Frontend)
 	GetConnectionStatus(ctx context.Context) string
