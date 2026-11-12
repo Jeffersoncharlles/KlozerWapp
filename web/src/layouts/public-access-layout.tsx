@@ -1,4 +1,4 @@
-import { Outlet } from "react-router";
+import { Outlet } from 'react-router'
 
 export const PublicAcessLayout = () => {
   return (
@@ -7,5 +7,5 @@ export const PublicAcessLayout = () => {
         <Outlet />
       </main>
     </div>
-  );
-};
+  )
+}

@@ -1,10 +1,42 @@
-import { useLoaderData } from "react-router";
-import { WhatsAppContainer } from "../features/whatsapp/components/whatsapp-container";
-import { loadWhatsAppConnection } from "../features/whatsapp/services/whatsapp-service";
-import type { WhatsAppLoaderData } from "../features/whatsapp/types";
+import { useLoaderData, type ActionFunctionArgs } from 'react-router'
+import { z } from 'zod'
 
-export const loader = loadWhatsAppConnection;
+import { WhatsAppContainer } from '../features/whatsapp/components/whatsapp-container'
+import {
+  connectWhatsApp,
+  disconnectWhatsApp,
+  loadWhatsAppConnection,
+  logoutWhatsApp,
+  saveWhatsAppConfiguration,
+} from '../features/whatsapp/services/whatsapp-service'
+import {
+  whatsappMutationSchema,
+  type WhatsAppLoaderData,
+  type WhatsAppActionResult,
+} from '../features/whatsapp/types'
+
+export const loader = loadWhatsAppConnection
+
+export async function action({ request }: ActionFunctionArgs): Promise<WhatsAppActionResult> {
+  try {
+    const mutation = whatsappMutationSchema.parse(await request.json())
+    if (mutation.intent === 'save-configuration')
+      await saveWhatsAppConfiguration(mutation.configuration, request.signal)
+    else if (mutation.intent === 'connect') await connectWhatsApp(request.signal)
+    else if (mutation.intent === 'disconnect') await disconnectWhatsApp(request.signal)
+    else await logoutWhatsApp(request.signal)
+    return {
+      message:
+        mutation.intent === 'save-configuration' ? 'Configuração salva' : 'Conexão atualizada',
+    }
+  } catch (error) {
+    if (error instanceof z.ZodError) return { error: 'Confira os dados enviados.' }
+    return {
+      error: error instanceof Error ? error.message : 'Não foi possível atualizar o WhatsApp.',
+    }
+  }
+}
 
 export function WhatsApp() {
-  return <WhatsAppContainer data={useLoaderData() as WhatsAppLoaderData} />;
+  return <WhatsAppContainer data={useLoaderData() as WhatsAppLoaderData} />
 }

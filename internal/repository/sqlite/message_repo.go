@@ -2,9 +2,11 @@ package sqlite
 
 import (
 	"context"
+	"errors"
 
 	"github.com/Jeffersoncharlles/KlozerWapp/internal/domain"
 	"github.com/Jeffersoncharlles/KlozerWapp/internal/repository"
+	"gorm.io/gorm"
 	"gorm.io/gorm/clause"
 )
 
@@ -55,4 +57,20 @@ func (r *messageRepo) ListByContactID(ctx context.Context, contactID string, lim
 	}
 
 	return messages, nil
+}
+
+func (r *messageRepo) LatestByContactID(ctx context.Context, contactID string) (*domain.Message, error) {
+	db, err := r.provider.GetDB(ctx)
+	if err != nil {
+		return nil, err
+	}
+
+	var message domain.Message
+	if err := db.Where("contact_id = ?", contactID).Order("timestamp DESC, created_at DESC").First(&message).Error; err != nil {
+		if errors.Is(err, gorm.ErrRecordNotFound) {
+			return nil, nil
+		}
+		return nil, err
+	}
+	return &message, nil
 }

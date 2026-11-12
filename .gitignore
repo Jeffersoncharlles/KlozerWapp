@@ -6,6 +6,7 @@
 *.key
 .txt
 docs/
+perfomace.md
 
 # Operating system
 .DS_Store

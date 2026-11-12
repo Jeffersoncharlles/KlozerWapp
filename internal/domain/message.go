@@ -20,6 +20,12 @@ type Message struct {
 	ExternalID *string   `json:"-" gorm:"uniqueIndex"`
 }
 
+type ConversationSummary struct {
+	Contact     Contact     `json:"contact"`
+	LastMessage *Message    `json:"last_message,omitempty"`
+	Card        *KanbanCard `json:"card,omitempty"`
+}
+
 func (m *Message) BeforeCreate(tx *gorm.DB) error {
 	if m.ID == "" {
 		m.ID = uuid.New().String()
@@ -30,6 +36,7 @@ func (m *Message) BeforeCreate(tx *gorm.DB) error {
 type MessageRepository interface {
 	Create(ctx context.Context, msg *Message) error
 	ListByContactID(ctx context.Context, contactID string, limit, offset int) ([]Message, error)
+	LatestByContactID(ctx context.Context, contactID string) (*Message, error)
 }
 
 type ChatUseCase interface {
@@ -38,4 +45,5 @@ type ChatUseCase interface {
 	// Chamado pelo Bridge/Listener do WhatsApp
 	HandleIncomingMessage(ctx context.Context, event FlowIncoming) error
 	ListChat(ctx context.Context, contactID string, limit, offset int) ([]Message, error)
+	ListConversations(ctx context.Context) ([]ConversationSummary, error)
 }

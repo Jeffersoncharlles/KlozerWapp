@@ -1,7 +1,8 @@
-import { CircleHelp, ShieldCheck } from "lucide-react";
-import { Button } from "../../../components/ui/button";
-import { SignInForm } from "./sign-in-form";
-import { SignInShowcase } from "./sign-in-showcase";
+import { CircleHelp, ShieldCheck } from 'lucide-react'
+
+import { Button } from '../../../components/ui/button'
+import { SignInForm } from './sign-in-form'
+import { SignInShowcase } from './sign-in-showcase'
 
 export function SignInContainer() {
   return (
@@ -25,5 +26,5 @@ export function SignInContainer() {
         </p>
       </section>
     </main>
-  );
+  )
 }

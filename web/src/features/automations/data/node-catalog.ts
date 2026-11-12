@@ -7,6 +7,7 @@ import {
   Zap,
   type LucideIcon,
 } from 'lucide-react'
+
 import type { AutomationNode, AutomationNodeType } from '../types'
 
 export type AutomationNodeSpec = {
@@ -66,7 +67,10 @@ export function getAutomationNodeSpec(type: AutomationNodeType) {
   return automationNodeSpecs.find((node) => node.type === type)
 }
 
-export function createAutomationNode(type: AutomationNodeType, position: { x: number; y: number }): AutomationNode {
+export function createAutomationNode(
+  type: AutomationNodeType,
+  position: { x: number; y: number },
+): AutomationNode {
   const spec = getAutomationNodeSpec(type)
 
   if (!spec) {
@@ -81,10 +85,18 @@ export function createAutomationNode(type: AutomationNodeType, position: { x: nu
       label: spec.title,
       description: spec.description,
       message: type === 'message' ? 'Escreva a mensagem que será enviada.' : undefined,
-      ...(type === 'interactive-message' ? { message: 'Escolha uma opção', options: [{ id: 'option-1', label: 'Opção 1' }], seconds: 300 } : {}),
+      ...(type === 'interactive-message'
+        ? {
+            message: 'Escolha uma opção',
+            options: [{ id: 'option-1', label: 'Opção 1' }],
+            seconds: 300,
+          }
+        : {}),
       ...(type === 'delay' ? { seconds: 5 } : {}),
       ...(type === 'variable' ? { variable: 'nome', value: '{{lastMessage}}' } : {}),
-      ...(type === 'condition' ? { variable: 'lastMessage', operator: 'equals' as const, value: '' } : {}),
+      ...(type === 'condition'
+        ? { variable: 'lastMessage', operator: 'equals' as const, value: '' }
+        : {}),
       ...(type === 'http-request' ? { method: 'GET' as const, url: '', variable: 'response' } : {}),
     },
   }

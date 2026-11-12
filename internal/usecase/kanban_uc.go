@@ -39,6 +39,13 @@ func (uc *kanbanUseCase) TakeAttendance(ctx context.Context, cardID, userID stri
 	return uc.repository.AssignUserToCard(ctx, cardID, userID)
 }
 
+func (uc *kanbanUseCase) AssignQueue(ctx context.Context, cardID, queueID, origin string) error {
+	if origin == "" {
+		origin = "manual"
+	}
+	return uc.repository.AssignQueueToCard(ctx, cardID, queueID, origin)
+}
+
 func (uc *kanbanUseCase) EnsureContactHasCard(ctx context.Context, contactID string) (*domain.KanbanCard, error) {
 	// 1. Verifica se o lead já tem um card ativo no Kanban.
 	card, err := uc.repository.GetCardByContactID(ctx, contactID)

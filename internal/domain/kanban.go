@@ -30,6 +30,8 @@ type KanbanCard struct {
 	ContactID        string  `json:"contact_id" gorm:"index;not null"`
 	ColumnID         string  `json:"column_id" gorm:"index;not null"`
 	AssignedToUserID *string `json:"assigned_to_user_id" gorm:"index"` // Null = Sem atendente
+	QueueID          *string `json:"queue_id" gorm:"index"`
+	AssignmentOrigin string  `json:"assignment_origin" gorm:"not null;default:'manual'"`
 	Position         int     `json:"position" gorm:"not null"`
 
 	// Relacionamentos para facilitar o retorno do GORM
@@ -54,7 +56,9 @@ type KanbanRepository interface {
 	MoveCard(ctx context.Context, cardID, targetColumnID string, newPosition int) error
 	GetCardByContactID(ctx context.Context, contactID string) (*KanbanCard, error)
 	AssignUserToCard(ctx context.Context, cardID, userID string) error
+	AssignQueueToCard(ctx context.Context, cardID, queueID, origin string) error
 	GetFirstColumn(ctx context.Context) (*KanbanColumn, error)
+	GetColumnByID(ctx context.Context, id string) (*KanbanColumn, error)
 }
 
 type KanbanUseCase interface {
@@ -63,4 +67,5 @@ type KanbanUseCase interface {
 	EnsureContactHasCard(ctx context.Context, contactID string) (*KanbanCard, error)
 	MoveCard(ctx context.Context, cardID, targetColumnID string, newPosition int) error
 	TakeAttendance(ctx context.Context, cardID, userID string) error
+	AssignQueue(ctx context.Context, cardID, queueID, origin string) error
 }

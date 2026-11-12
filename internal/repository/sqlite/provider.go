@@ -3,14 +3,18 @@ package sqlite
 import (
 	"context"
 	"database/sql"
+	"log"
 	"log/slog"
 	"net/url"
+	"os"
 	"path/filepath"
 	"sync"
+	"time"
 
 	"golang.org/x/crypto/bcrypt"
 	gormsqlite "gorm.io/driver/sqlite"
 	"gorm.io/gorm"
+	"gorm.io/gorm/logger"
 
 	"github.com/Jeffersoncharlles/KlozerWapp/internal/config"
 	"github.com/Jeffersoncharlles/KlozerWapp/internal/domain"
@@ -29,7 +33,15 @@ func NewGormProvider(cfg *config.Config) (repository.GormProvider, func(), error
 		return nil, nil, err
 	}
 	dsn := (&url.URL{Scheme: "file", Path: path, RawQuery: "_journal_mode=WAL&_busy_timeout=5000&_foreign_keys=on"}).String()
-	db, err := gorm.Open(gormsqlite.Open(dsn), &gorm.Config{PrepareStmt: true})
+	db, err := gorm.Open(gormsqlite.Open(dsn), &gorm.Config{
+		PrepareStmt: true,
+		Logger: logger.New(log.New(os.Stdout, "", log.LstdFlags), logger.Config{
+			SlowThreshold:             time.Second,
+			LogLevel:                  logger.Warn,
+			IgnoreRecordNotFoundError: true,
+			Colorful:                  false,
+		}),
+	})
 	if err != nil {
 		return nil, nil, err
 	}
@@ -54,6 +66,7 @@ func NewGormProvider(cfg *config.Config) (repository.GormProvider, func(), error
 		&domain.User{},
 		&domain.Contact{},
 		&domain.Tag{},
+		&domain.TagKanbanRule{},
 		&domain.KanbanColumn{},
 		&domain.KanbanCard{},
 		&domain.Message{},
@@ -64,8 +77,8 @@ func NewGormProvider(cfg *config.Config) (repository.GormProvider, func(), error
 		&flowSessionRecord{},
 		&flowInbox{},
 		&flowOutbox{},
+		&whatsappConfigurationRecord{},
 		&domain.Queue{},
-		&domain.DashboardMetrics{},
 		&domain.Campaign{},
 		&domain.CallRecord{},
 	)

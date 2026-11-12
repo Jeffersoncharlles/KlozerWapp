@@ -87,6 +87,14 @@ func (r *kanbanRepo) AssignUserToCard(ctx context.Context, cardID, userID string
 	return db.Model(&domain.KanbanCard{}).Where("id = ?", cardID).Update("assigned_to_user_id", userID).Error
 }
 
+func (r *kanbanRepo) AssignQueueToCard(ctx context.Context, cardID, queueID, origin string) error {
+	db, err := r.provider.GetDB(ctx)
+	if err != nil {
+		return err
+	}
+	return db.Model(&domain.KanbanCard{}).Where("id = ?", cardID).Updates(map[string]interface{}{"queue_id": queueID, "assignment_origin": origin}).Error
+}
+
 func (r *kanbanRepo) GetFirstColumn(ctx context.Context) (*domain.KanbanColumn, error) {
 	db, err := r.provider.GetDB(ctx)
 	if err != nil {
@@ -100,4 +108,16 @@ func (r *kanbanRepo) GetFirstColumn(ctx context.Context) (*domain.KanbanColumn, 
 		return nil, err
 	}
 	return &col, nil
+}
+
+func (r *kanbanRepo) GetColumnByID(ctx context.Context, id string) (*domain.KanbanColumn, error) {
+	db, err := r.provider.GetDB(ctx)
+	if err != nil {
+		return nil, err
+	}
+	var column domain.KanbanColumn
+	if err := db.First(&column, "id = ?", id).Error; err != nil {
+		return nil, err
+	}
+	return &column, nil
 }

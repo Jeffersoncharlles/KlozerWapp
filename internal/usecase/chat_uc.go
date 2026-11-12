@@ -2,6 +2,9 @@ package usecase
 
 import (
 	"context"
+	"errors"
+	"sort"
+	"strings"
 	"time"
 
 	"github.com/Jeffersoncharlles/KlozerWapp/internal/domain"
@@ -41,7 +44,7 @@ func NewChatUseCase(
 func (uc *chatUseCase) HandleIncomingMessage(ctx context.Context, event domain.FlowIncoming) error {
 	phone, content := event.Phone, event.Text
 	// 1. Garante que o Contato existe no banco
-	contact, err := uc.contactUC.CreateOrUpdate(ctx, phone, "Cliente "+phone, "")
+	contact, err := uc.contactUC.CreateOrUpdate(ctx, phone, normalizeWhatsAppPhone(phone), "")
 	if err != nil {
 		return err
 	}
@@ -77,6 +80,13 @@ func (uc *chatUseCase) HandleIncomingMessage(ctx context.Context, event domain.F
 
 // SendMessage é chamado pelo React (via HTTP) quando o Atendente responde
 func (uc *chatUseCase) SendMessage(ctx context.Context, contactID, senderUserID, content string) (*domain.Message, error) {
+	content = strings.TrimSpace(content)
+	if contactID == "" {
+		return nil, errors.New("contato é obrigatório")
+	}
+	if content == "" {
+		return nil, errors.New("mensagem não pode ser vazia")
+	}
 	// 1. Salva a mensagem no banco do CRM como enviada por um Atendente
 	msg := &domain.Message{
 		ContactID: contactID,
@@ -91,7 +101,7 @@ func (uc *chatUseCase) SendMessage(ctx context.Context, contactID, senderUserID,
 	}
 
 	// 2. Busca o telefone real do contato
-	contact, err := uc.contactUC.GetByPhone(ctx, contactID)
+	contact, err := uc.contactUC.GetByID(ctx, contactID)
 	if err != nil {
 		return nil, err
 	}
@@ -114,4 +124,41 @@ func (uc *chatUseCase) SendMessage(ctx context.Context, contactID, senderUserID,
 
 func (uc *chatUseCase) ListChat(ctx context.Context, contactID string, limit, offset int) ([]domain.Message, error) {
 	return uc.msgRepo.ListByContactID(ctx, contactID, limit, offset)
+}
+
+func (uc *chatUseCase) ListConversations(ctx context.Context) ([]domain.ConversationSummary, error) {
+	contacts, err := uc.contactUC.List(ctx)
+	if err != nil {
+		return nil, err
+	}
+	board, err := uc.kanbanUC.ListBoard(ctx)
+	if err != nil {
+		return nil, err
+	}
+	cardsByContact := make(map[string]*domain.KanbanCard)
+	for _, column := range board {
+		for i := range column.Cards {
+			card := column.Cards[i]
+			cardsByContact[card.ContactID] = &card
+		}
+	}
+	conversations := make([]domain.ConversationSummary, 0, len(contacts))
+	for _, contact := range contacts {
+		lastMessage, err := uc.msgRepo.LatestByContactID(ctx, contact.ID)
+		if err != nil {
+			return nil, err
+		}
+		conversations = append(conversations, domain.ConversationSummary{Contact: contact, LastMessage: lastMessage, Card: cardsByContact[contact.ID]})
+	}
+	sort.SliceStable(conversations, func(i, j int) bool {
+		left, right := conversations[i].LastMessage, conversations[j].LastMessage
+		if left == nil {
+			return false
+		}
+		if right == nil {
+			return true
+		}
+		return left.Timestamp.After(right.Timestamp)
+	})
+	return conversations, nil
 }

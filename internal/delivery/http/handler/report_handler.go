@@ -5,6 +5,7 @@ import (
 
 	"github.com/Jeffersoncharlles/KlozerWapp/internal/delivery/http/response"
 	"github.com/Jeffersoncharlles/KlozerWapp/internal/domain"
+	"github.com/Jeffersoncharlles/KlozerWapp/internal/usecase"
 	"github.com/go-chi/chi/v5"
 )
 
@@ -23,10 +24,25 @@ func (h *ReportHandler) RegisterRoutes(r chi.Router) {
 }
 
 func (h *ReportHandler) GetDashboard(w http.ResponseWriter, r *http.Request) {
-	metrics, err := h.reportUC.GetDashboardSummary(r.Context())
+	from, err := usecase.ReportDate(r.URL.Query().Get("from"), false)
+	if err != nil {
+		response.Error(w, http.StatusBadRequest, err.Error())
+		return
+	}
+	to, err := usecase.ReportDate(r.URL.Query().Get("to"), true)
+	if err != nil {
+		response.Error(w, http.StatusBadRequest, err.Error())
+		return
+	}
+	report, err := h.reportUC.GetDashboardReport(r.Context(), domain.ReportFilter{
+		From:         from,
+		To:           to,
+		ConnectionID: r.URL.Query().Get("connection_id"),
+	},
+	)
 	if err != nil {
 		response.Error(w, http.StatusInternalServerError, err.Error())
 		return
 	}
-	response.JSON(w, http.StatusOK, metrics)
+	response.JSON(w, http.StatusOK, report)
 }
