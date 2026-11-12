@@ -1,28 +1,51 @@
-import { ArrowLeft, CircleHelp, GitBranch, MessageSquareText, MoreHorizontal, Save, Variable, Webhook, Zap } from "lucide-react";
-import { Button } from "../components/ui/button";
-import { Card } from "../components/ui/card";
-import { Input } from "../components/ui/input";
-import { PageContainer, WorkspaceHeader } from "../components/workspace-header";
+import { redirect, useLoaderData, useRouteError, type ActionFunctionArgs, type LoaderFunctionArgs } from 'react-router'
+import { z } from 'zod'
+import { AutomationsContainer } from '../features/automations/components/automations-container'
+import { AutomationAPIError, listAutomations, loadAutomation, createAutomation, saveAutomation, toggleAutomation, publishAutomation, duplicateAutomation, deleteAutomation, bindAutomation, loadAutomationBinding, simulateAutomation } from '../features/automations/services/automation-service'
+import { automationFlowSchema, type AutomationFlow, type AutomationSummary, type FlowIssue } from '../features/automations/types'
 
-const steps = [
-  { title: "Texto", description: "Envie uma mensagem de texto simples", icon: MessageSquareText, tone: "text-emerald-400" },
-  { title: "Mensagem interativa", description: "Botões nativos do WhatsApp", icon: Zap, tone: "text-sky-400" },
-  { title: "Condição", description: "Separe caminhos do fluxo", icon: GitBranch, tone: "text-violet-400" },
-  { title: "Intervalo", description: "Espere alguns segundos antes de continuar", icon: CircleHelp, tone: "text-amber-400" },
-  { title: "Variável", description: "Guarde um valor para usar depois", icon: Variable, tone: "text-pink-400" },
-  { title: "Requisição HTTP", description: "Chame uma API e aguarde a resposta", icon: Webhook, tone: "text-slate-300" },
-];
+export type AutomationLoaderData = { flows?: AutomationSummary[]; flow?: AutomationFlow; boundFlowId?: string }
+export type AutomationActionResult = { flow?: AutomationFlow; message?: string; error?: string; fields?: FlowIssue[]; messages?: string[] }
 
-export const Automations = () => (
-  <PageContainer>
-    <WorkspaceHeader title="Fluxos" description="Construa automações visuais para suas conversas" />
-    <main className="flex min-h-[calc(100svh-4rem)] flex-col overflow-hidden">
-      <div className="flex flex-wrap items-center gap-2 border-b border-border/70 px-4 py-3 sm:px-6"><Button variant="ghost" size="sm"><ArrowLeft className="size-4" /> Fluxos</Button><Input className="h-9 w-48" defaultValue="Novo fluxo de conversa" /><Input className="h-9 w-44" placeholder="Palavras-chave..." /><label className="flex items-center gap-2 text-xs text-muted-foreground"><input type="checkbox" defaultChecked className="accent-emerald-500" /> Ativo</label><span className="ml-auto text-xs text-amber-300">Alterações não salvas</span><Button className="bg-emerald-500 text-emerald-950 hover:bg-emerald-400"><Save className="size-4" /> Salvar</Button></div>
-      <div className="grid min-h-[700px] flex-1 lg:grid-cols-[250px_1fr_280px]">
-        <aside className="border-b border-border/70 bg-card/30 p-3 lg:border-b-0 lg:border-r"><p className="mb-3 text-[10px] font-semibold uppercase tracking-widest text-muted-foreground">Adicionar passo</p><div className="space-y-2">{steps.map(({ title, description, icon: Icon, tone }) => <button key={title} type="button" className="flex w-full items-center gap-3 rounded-lg border border-border/70 bg-background/60 p-2 text-left transition-colors hover:border-emerald-400/40 hover:bg-emerald-400/5"><Icon className={`size-4 ${tone}`} /><span className="min-w-0"><span className="block text-xs font-medium">{title}</span><span className="block truncate text-[10px] text-muted-foreground">{description}</span></span></button>)}</div></aside>
-        <section className="relative min-h-[520px] overflow-hidden bg-background/70" style={{ backgroundImage: "radial-gradient(circle, rgb(148 163 184 / 0.18) 1px, transparent 1px)", backgroundSize: "22px 22px" }}><div className="absolute left-[18%] top-[42%] w-[56%] border-t border-dashed border-emerald-400/60" /><Card className="absolute left-[10%] top-[32%] w-56 border-l-2 border-l-emerald-400 bg-card/95"><div className="p-3"><div className="flex items-center gap-2 text-sm font-medium"><MessageSquareText className="size-4 text-emerald-400" /> Texto <span className="ml-auto rounded bg-emerald-400/10 px-1.5 py-0.5 text-[9px] text-emerald-300">INÍCIO</span></div><p className="mt-2 text-xs text-muted-foreground">Olá! 👋 Como podemos ajudar?</p></div></Card><Card className="absolute left-[58%] top-[32%] w-56 border-l-2 border-l-sky-400 bg-card/95"><div className="p-3"><div className="flex items-center gap-2 text-sm font-medium"><Zap className="size-4 text-sky-400" /> Mensagem interativa</div><p className="mt-2 text-xs text-muted-foreground">Como podemos ajudar?</p><div className="mt-3 flex justify-end gap-1"><span className="rounded-full bg-emerald-400/15 px-2 py-1 text-[9px] text-emerald-300">Compras</span><span className="rounded-full bg-emerald-400/15 px-2 py-1 text-[9px] text-emerald-300">Suporte</span></div></div></Card></section>
-        <aside className="border-t border-border/70 bg-card/30 p-4 lg:border-l lg:border-t-0"><div className="flex items-center justify-between border-b border-emerald-400 pb-3 text-sm font-medium">Propriedades<Button variant="ghost" size="icon-xs"><MoreHorizontal className="size-4" /></Button></div><div className="flex h-full items-center justify-center text-center text-xs text-muted-foreground">Clique em um passo do fluxo para editar o que ele faz.</div></aside>
-      </div>
-    </main>
-  </PageContainer>
-);
+export async function loader({ params, request }: LoaderFunctionArgs): Promise<AutomationLoaderData> {
+  if (params.id) {
+    const flow = await loadAutomation(params.id, request.signal)
+    const binding = await loadAutomationBinding(request.signal).catch((error) => { if (error instanceof AutomationAPIError && error.status === 403) return undefined; throw error })
+    return { flow, boundFlowId: binding?.flowId }
+  }
+  return { flows: await listAutomations(request.signal) }
+}
+const mutationSchema = z.discriminatedUnion('intent', [
+  z.object({ intent: z.literal('create') }),
+  z.object({ intent: z.literal('save'), flow: automationFlowSchema }),
+  z.object({ intent: z.literal('publish'), revision: z.number().int().positive() }),
+  z.object({ intent: z.literal('duplicate'), id: z.string().min(1) }),
+  z.object({ intent: z.literal('delete'), id: z.string().min(1), revision: z.number().int().positive() }),
+  z.object({ intent: z.literal('toggle'), id: z.string().min(1), revision: z.number().int().positive(), enabled: z.boolean() }),
+  z.object({ intent: z.literal('bind'), flowId: z.string() }),
+  z.object({ intent: z.literal('simulate'), inputs: z.array(z.string()).max(100) }),
+])
+export async function action({ request, params }: ActionFunctionArgs): Promise<AutomationActionResult | Response> {
+  try {
+    const mutation = mutationSchema.parse(await request.json())
+    switch (mutation.intent) {
+      case 'create': { const flow = await createAutomation(); return redirect(`/dashboard/automations/${flow.id}`) }
+      case 'duplicate': { const flow = await duplicateAutomation(mutation.id); return redirect(`/dashboard/automations/${flow.id}`) }
+      case 'delete': await deleteAutomation(mutation.id, mutation.revision); return { message: 'Automação excluída' }
+      case 'toggle': await toggleAutomation(mutation.id, mutation.revision, mutation.enabled); return { message: 'Status atualizado' }
+      case 'save': if (params.id !== mutation.flow.id) throw new Error('Fluxo inválido.'); return { flow: await saveAutomation(mutation.flow), message: 'Rascunho salvo no servidor' }
+      case 'publish': if (!params.id) throw new Error('Fluxo inválido.'); return { flow: await publishAutomation(params.id, mutation.revision), message: 'Versão publicada' }
+      case 'bind': await bindAutomation(mutation.flowId); return { message: mutation.flowId ? 'Fluxo vinculado à conexão' : 'Vínculo removido' }
+      case 'simulate': if (!params.id) throw new Error('Fluxo inválido.'); return { ...(await simulateAutomation(params.id, mutation.inputs)), message: 'Simulação concluída sem envios reais' }
+    }
+  } catch (error) {
+    if (error instanceof AutomationAPIError) return { error: error.message, fields: error.fields }
+    if (error instanceof z.ZodError) return { error: 'Confira os dados do fluxo.', fields: error.issues.map((issue) => ({ field: issue.path.join('.'), message: issue.message })) }
+    return { error: error instanceof Error ? error.message : 'Não foi possível concluir a operação.' }
+  }
+}
+export function Automations() { return <AutomationsContainer data={useLoaderData() as AutomationLoaderData} /> }
+export function AutomationErrorBoundary() {
+  const error = useRouteError()
+  return <main className="p-6"><h1 className="font-semibold">Não foi possível carregar as automações</h1><p className="mt-2 text-sm">{error instanceof Error ? error.message : 'Verifique sua sessão e tente novamente.'}</p><a className="mt-4 inline-block underline" href="/dashboard/automations">Voltar à lista</a></main>
+}

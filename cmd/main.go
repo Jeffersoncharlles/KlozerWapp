@@ -28,35 +28,42 @@ func main() {
 	}
 
 	// 3. Injeta todas as dependências geradas pelo Google Wire
-	// (Certifique-se de rodar o comando `wire` dentro da pasta cmd/api/ antes de compilar)
-	app, err := InitializeApp(cfg)
+	// Gere os providers com: go run github.com/google/wire/cmd/wire@v0.7.0 ./cmd
+	app, cleanup, err := InitializeApp(cfg)
 	if err != nil {
 		slog.Error("erro fatal ao inicializar injecao de dependencias", "err", err)
 		os.Exit(1)
 	}
+	defer cleanup()
 
 	// 4. Configura o Servidor HTTP com regras de Timeout (Proteção contra Slowloris)
 	srv := &http.Server{
-		Addr:         ":" + cfg.Port,
-		Handler:      app.Router, // Agora pega o router de dentro do App
-		ReadTimeout:  15 * time.Second,
-		WriteTimeout: 15 * time.Second,
-		IdleTimeout:  60 * time.Second,
+		Addr:        ":" + cfg.Port,
+		Handler:     app.Router, // Agora pega o router de dentro do App
+		ReadTimeout: 15 * time.Second,
+		// WriteTimeout: 15 * time.Second,
+		IdleTimeout: 60 * time.Second,
 	}
 
 	// 5. Inicia o servidor em uma goroutine separada para não bloquear o fluxo
+	serveErrors := make(chan error, 1)
 	go func() {
 		slog.Info("🚀 Servidor HTTP online", "url", "http://localhost:"+cfg.Port+"/v1/api")
 		if err := srv.ListenAndServe(); err != nil && !errors.Is(err, http.ErrServerClosed) {
-			slog.Error("falha critica no servidor HTTP", "err", err)
-			os.Exit(1)
+			serveErrors <- err
 		}
 	}()
 
 	// 6. Graceful Shutdown: Canal aguardando sinal de interrupção (Ctrl+C, Docker stop)
 	quit := make(chan os.Signal, 1)
 	signal.Notify(quit, os.Interrupt, syscall.SIGTERM)
-	<-quit // O sistema trava nesta linha até receber o sinal
+	defer signal.Stop(quit)
+	select {
+	case <-quit:
+	case err := <-serveErrors:
+		slog.Error("falha critica no servidor HTTP", "err", err)
+		return // Deferred cleanup still stops workers/client and closes SQLite.
+	}
 
 	slog.Info("sinal de desligamento recebido. Encerrando processos graciosamente...")
 

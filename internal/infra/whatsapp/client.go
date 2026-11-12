@@ -2,35 +2,34 @@ package whatsapp
 
 import (
 	"context"
+	"database/sql"
 
 	"go.mau.fi/whatsmeow"
 	"go.mau.fi/whatsmeow/store/sqlstore"
 	waLog "go.mau.fi/whatsmeow/util/log"
-
-	_ "github.com/mattn/go-sqlite3"
 )
 
-func ProvideWhatsmeowClient() (*whatsmeow.Client, error) {
-	// A nova versão do Whatsmeow exige contexto nas operações de banco de dados
+func ProvideWhatsmeowClient(db *sql.DB) (*whatsmeow.Client, func(), error) {
 	ctx := context.Background()
 
 	// Logger silencioso
 	dbLog := waLog.Stdout("Database", "WARN", true)
 
-	// Agora passamos o "ctx" como PRIMEIRO argumento
-	container, err := sqlstore.New(ctx, "sqlite3", "file:wa_sessions.db?_foreign_keys=on", dbLog)
-	if err != nil {
-		return nil, err
+	// Reuse the CRM pool; NewWithDB requires an explicit schema upgrade.
+	container := sqlstore.NewWithDB(db, "sqlite3", dbLog)
+	if err := container.Upgrade(ctx); err != nil {
+		return nil, nil, err
 	}
 
-	// O GetFirstDevice agora também exige o "ctx"
+	// This installation owns one WhatsApp device.
 	deviceStore, err := container.GetFirstDevice(ctx)
 	if err != nil {
-		return nil, err
+		return nil, nil, err
 	}
 
 	clientLog := waLog.Stdout("Client", "WARN", true)
 	client := whatsmeow.NewClient(deviceStore, clientLog)
 
-	return client, nil
+	// The SQLite provider owns the pool. Never call container.Close here.
+	return client, func() { client.Disconnect() }, nil
 }

@@ -62,7 +62,23 @@ const router = createBrowserRouter([
       },
       {
         path: "automations",
-        lazy: async () => ({ Component: (await import("../pages/automations")).Automations }),
+        lazy: async () => {
+          const module = await import("../pages/automations");
+
+          return {
+            Component: module.Automations,
+            loader: module.loader,
+            action: module.action,
+            ErrorBoundary: module.AutomationErrorBoundary,
+          };
+        },
+      },
+      {
+        path: 'automations/:id',
+        lazy: async () => {
+          const module = await import('../pages/automations')
+          return { Component: module.Automations, loader: module.loader, action: module.action, ErrorBoundary: module.AutomationErrorBoundary }
+        },
       },
       {
         path: "campaigns",
@@ -72,10 +88,20 @@ const router = createBrowserRouter([
         path: "reports",
         lazy: async () => ({ Component: (await import("../pages/reports")).Reports }),
       },
+      {
+        path: "whatsapp",
+        lazy: async () => {
+          const module = await import("../pages/whatsapp");
+
+          return {
+            Component: module.WhatsApp,
+            loader: module.loader,
+          };
+        },
+      },
       ...[
         ["contacts", "Contatos"],
         ["queues", "Filas"],
-        ["whatsapp", "WhatsApp"],
         ["quick-replies", "Respostas rápidas"],
         ["calls", "Chamadas"],
         ["docs", "Documentação"],

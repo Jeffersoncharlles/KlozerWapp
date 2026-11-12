@@ -13,7 +13,7 @@ export function WorkspaceHeader({
   description?: string;
 }) {
   return (
-    <header className="flex min-h-16 items-center gap-3 border-b border-border/70 px-4 sm:px-6">
+    <header className="flex min-h-16 items-center gap-3 border-b border-border bg-card px-4 sm:px-6">
       <SidebarTrigger />
       <Separator orientation="vertical" className="mx-1 h-5" />
       <div className="min-w-0 flex-1">

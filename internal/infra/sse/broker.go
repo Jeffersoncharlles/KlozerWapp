@@ -3,11 +3,11 @@ package sse
 import (
 	"encoding/json"
 	"fmt"
+	"log/slog"
 	"net/http"
 	"sync"
 )
 
-// Broker gerencia os clientes conectados via Server-Sent Events (SSE)
 type Broker struct {
 	clients  map[chan string]bool
 	mutex    sync.RWMutex
@@ -17,30 +17,33 @@ type Broker struct {
 func NewBroker() *Broker {
 	broker := &Broker{
 		clients:  make(map[chan string]bool),
-		Notifier: make(chan string),
+		Notifier: make(chan string, 100), // Buffer no Notifier para não travar
 	}
 	go broker.listen()
 	return broker
 }
 
 func (b *Broker) listen() {
-	for {
-		select {
-		case msg := <-b.Notifier:
-			b.mutex.RLock()
-			for clientMessageChan := range b.clients {
-				// Envia a mensagem para todos os clientes conectados sem travar
-				select {
-				case clientMessageChan <- msg:
-				default:
-				}
+	// Substituímos o select infinito por um range limpo
+	for msg := range b.Notifier {
+		b.mutex.RLock()
+		clientesConectados := len(b.clients)
+
+		slog.Info("📡 SSE Broker: Distribuindo nova mensagem", "clientes_conectados", clientesConectados)
+
+		for clientMessageChan := range b.clients {
+			select {
+			case clientMessageChan <- msg:
+				slog.Info("✅ SSE Broker: Mensagem entregue ao canal do cliente com sucesso")
+			default:
+				// Se cair aqui, era isso que estava escondendo o seu QR Code!
+				slog.Warn("🚨 SSE Broker: Mensagem DESCARTADA! O cliente estava bloqueado ou sem buffer")
 			}
-			b.mutex.RUnlock()
 		}
+		b.mutex.RUnlock()
 	}
 }
 
-// ServeHTTP permite que o roteador Chi plugue o Broker direto numa rota (ex: /v1/api/sessions/stream)
 func (b *Broker) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	flusher, ok := w.(http.Flusher)
 	if !ok {
@@ -53,23 +56,32 @@ func (b *Broker) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Connection", "keep-alive")
 	w.Header().Set("Access-Control-Allow-Origin", "*")
 
-	messageChan := make(chan string)
+	// 👇 O SEGREDO ABSOLUTO ESTÁ AQUI: BUFFER DE 50 👇
+	// Sem esse 50, o select lá em cima descarta a mensagem na menor oscilação
+	messageChan := make(chan string, 50)
+
 	b.mutex.Lock()
 	b.clients[messageChan] = true
 	b.mutex.Unlock()
+
+	slog.Info("🟢 SSE Broker: Novo cliente conectado e escutando!")
 
 	defer func() {
 		b.mutex.Lock()
 		delete(b.clients, messageChan)
 		b.mutex.Unlock()
 		close(messageChan)
+		slog.Info("🔴 SSE Broker: Cliente desconectado!")
 	}()
 
-	// Mantém a conexão aberta enviando eventos
+	// Envia um comentário vazio para forçar a abertura da conexão imediatamente no navegador
+	fmt.Fprintf(w, ": heartbeat\n\n")
+	flusher.Flush()
+
 	for {
 		select {
 		case <-r.Context().Done():
-			return // Cliente fechou a aba do navegador
+			return
 		case msg := <-messageChan:
 			fmt.Fprintf(w, "data: %s\n\n", msg)
 			flusher.Flush()
@@ -78,7 +90,6 @@ func (b *Broker) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 }
 
 func (b *Broker) Publish(topic string, data interface{}) error {
-	// Empacota o tópico e os dados em um único JSON para o frontend saber o que atualizar
 	payload := map[string]interface{}{
 		"topic": topic,
 		"data":  data,
@@ -89,7 +100,6 @@ func (b *Broker) Publish(topic string, data interface{}) error {
 		return err
 	}
 
-	// Envia o JSON stringificado para o canal Notifier do SSE
 	b.Notifier <- string(bytes)
 	return nil
 }

@@ -2,8 +2,11 @@ package whatsapp
 
 import (
 	"context"
+	"crypto/sha256"
+	"encoding/hex"
 	"errors"
 	"strings"
+	"time"
 
 	"github.com/Jeffersoncharlles/KlozerWapp/internal/domain"
 
@@ -26,7 +29,7 @@ func NewWhatsAppManager(client *whatsmeow.Client) domain.WhatsAppGateway {
 }
 
 func parseJID(phone string) types.JID {
-	if !strings.Contains(phone, "@s.whatsapp.net") {
+	if !strings.Contains(phone, "@") {
 		phone = phone + "@s.whatsapp.net"
 	}
 	jid, _ := types.ParseJID(phone)
@@ -43,6 +46,19 @@ func (m *whatsAppManager) SendMessage(ctx context.Context, phone, text string) e
 	}
 
 	_, err := m.client.SendMessage(ctx, parseJID(phone), msg)
+	return err
+}
+
+func (m *whatsAppManager) SendFlowMessage(ctx context.Context, phone, text, id string) error {
+	if !m.client.IsConnected() {
+		return errors.New("whatsapp não está conectado")
+	}
+	jid, err := types.ParseJID(phone)
+	if err != nil || jid.Server == "" {
+		jid = parseJID(phone)
+	}
+	hash := sha256.Sum256([]byte(id))
+	_, err = m.client.SendMessage(ctx, jid, &waProto.Message{Conversation: proto.String(text)}, whatsmeow.SendRequestExtra{ID: strings.ToUpper(hex.EncodeToString(hash[:16])), Timeout: 10 * time.Second})
 	return err
 }
 
@@ -67,11 +83,19 @@ func (m *whatsAppManager) Connect(ctx context.Context) error {
 		if err != nil {
 			return err
 		}
-		for evt := range qrChan {
-			if evt.Event == "code" {
-				m.qrChan <- evt.Code
+
+		go func() {
+			for evt := range qrChan {
+				if evt.Event == "code" {
+					m.qrChan <- evt.Code
+				} else if evt.Event == "success" {
+					// 🟢 O celular leu o QR Code com sucesso!
+					// Avisa o handler que conectou!
+					m.qrChan <- "CONNECTED"
+				}
 			}
-		}
+		}()
+
 		return nil
 	}
 	return m.client.Connect()

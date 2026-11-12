@@ -3,3 +3,6 @@ build:
 
 dev:
 	go run ./cmd
+
+wire:
+	wire gen ./cmd 

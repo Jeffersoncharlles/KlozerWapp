@@ -26,7 +26,7 @@ func (r *reportRepository) GetDashboardMetrics(ctx context.Context) (*domain.Das
 	db.Model(&domain.Contact{}).Count(&metrics.TotalContacts)
 	db.Model(&domain.Message{}).Count(&metrics.TotalMessages)
 	db.Model(&domain.KanbanCard{}).Count(&metrics.TotalCards)
-	db.Model(&domain.Flow{}).Where("is_active = ?", true).Count(&metrics.ActiveWorkflows)
+	db.Model(&conversationFlow{}).Where("enabled = ? AND deleted = ? AND published_revision > 0", true, false).Count(&metrics.ActiveWorkflows)
 
 	return &metrics, nil
 }

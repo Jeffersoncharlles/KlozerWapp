@@ -5,6 +5,7 @@ import (
 
 	"github.com/Jeffersoncharlles/KlozerWapp/internal/domain"
 	"github.com/Jeffersoncharlles/KlozerWapp/internal/repository"
+	"gorm.io/gorm/clause"
 )
 
 type messageRepo struct {
@@ -19,6 +20,20 @@ func (r *messageRepo) Create(ctx context.Context, msg *domain.Message) error {
 	db, err := r.provider.GetDB(ctx)
 	if err != nil {
 		return err
+	}
+	if msg.ExternalID != nil {
+		result := db.Clauses(clause.OnConflict{Columns: []clause.Column{{Name: "external_id"}}, DoNothing: true}).Create(msg)
+		if result.Error != nil {
+			return result.Error
+		}
+		if result.RowsAffected == 0 {
+			var existing domain.Message
+			if err := db.First(&existing, "external_id=?", *msg.ExternalID).Error; err != nil {
+				return err
+			}
+			*msg = existing
+		}
+		return nil
 	}
 	return db.Create(msg).Error
 }

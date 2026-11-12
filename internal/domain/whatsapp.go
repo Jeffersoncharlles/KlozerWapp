@@ -7,6 +7,7 @@ import (
 // WhatsAppGateway é a interface de saída que permite o Core do CRM
 // disparar ações no WhatsApp sem saber se é whatsmeow ou Cloud API Meta.
 type WhatsAppGateway interface {
+	FlowSender
 	// Ações de Mensageria
 	SendMessage(ctx context.Context, phone, text string) error
 	SendMedia(ctx context.Context, phone, mediaType string, data []byte) error

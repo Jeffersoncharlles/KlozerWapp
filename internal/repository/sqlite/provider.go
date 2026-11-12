@@ -2,10 +2,14 @@ package sqlite
 
 import (
 	"context"
+	"database/sql"
 	"log/slog"
+	"net/url"
+	"path/filepath"
+	"sync"
 
 	"golang.org/x/crypto/bcrypt"
-	"gorm.io/driver/sqlite"
+	gormsqlite "gorm.io/driver/sqlite"
 	"gorm.io/gorm"
 
 	"github.com/Jeffersoncharlles/KlozerWapp/internal/config"
@@ -17,20 +21,34 @@ type singleTenantProvider struct {
 	db *gorm.DB
 }
 
-func NewGormProvider(cfg *config.Config) (repository.GormProvider, error) {
-	dsn := cfg.DatabasePath + "?_journal_mode=WAL&_busy_timeout=5000&_foreign_keys=on"
-
-	db, err := gorm.Open(sqlite.Open(dsn), &gorm.Config{
-		PrepareStmt: true,
-	})
+// NewGormProvider owns the only connection pool in this single-tenant app.
+// Whatsmeow receives the same pool through ProvideSQLDB; it never opens a file.
+func NewGormProvider(cfg *config.Config) (repository.GormProvider, func(), error) {
+	path, err := filepath.Abs(cfg.DatabasePath)
 	if err != nil {
-		return nil, err
+		return nil, nil, err
 	}
+	dsn := (&url.URL{Scheme: "file", Path: path, RawQuery: "_journal_mode=WAL&_busy_timeout=5000&_foreign_keys=on"}).String()
+	db, err := gorm.Open(gormsqlite.Open(dsn), &gorm.Config{PrepareStmt: true})
+	if err != nil {
+		return nil, nil, err
+	}
+	pool, err := db.DB()
+	if err != nil {
+		return nil, nil, err
+	}
+	pool.SetMaxOpenConns(4)
+	pool.SetMaxIdleConns(4)
+	cleanup := sync.OnceFunc(func() {
+		if err := pool.Close(); err != nil {
+			slog.Error("fechar SQLite", "err", err)
+		}
+	})
 
 	// =========================================================================
 	// MIGRAÇÃO AUTOMÁTICA (Roda sozinho ao subir a API)
-	// O GORM verifica se as tabelas existem. Se não, cria.
-	// Se existirem, ele não apaga dados, só adiciona colunas novas se houver.
+	// Inicializa o esquema do CRM. O SQLStore inicializa suas próprias tabelas
+	// ao construir o cliente Whatsmeow, usando este mesmo pool.
 	// =========================================================================
 	err = db.AutoMigrate(
 		&domain.User{},
@@ -40,8 +58,12 @@ func NewGormProvider(cfg *config.Config) (repository.GormProvider, error) {
 		&domain.KanbanCard{},
 		&domain.Message{},
 		&domain.QuickReply{},
-		&domain.Flow{},
-		&domain.FlowNode{},
+		&conversationFlow{},
+		&flowVersion{},
+		&flowBinding{},
+		&flowSessionRecord{},
+		&flowInbox{},
+		&flowOutbox{},
 		&domain.Queue{},
 		&domain.DashboardMetrics{},
 		&domain.Campaign{},
@@ -49,7 +71,8 @@ func NewGormProvider(cfg *config.Config) (repository.GormProvider, error) {
 	)
 	if err != nil {
 		slog.Error("Erro ao sincronizar tabelas do banco", "err", err)
-		return nil, err
+		cleanup()
+		return nil, nil, err
 	}
 
 	// Popula os dados iniciais caso o banco seja novo
@@ -57,7 +80,17 @@ func NewGormProvider(cfg *config.Config) (repository.GormProvider, error) {
 	// 3. SEED: Cria o usuário padrão se o banco estiver vazio
 	seedDefaultUser(db)
 
-	return &singleTenantProvider{db: db}, nil
+	return &singleTenantProvider{db: db}, cleanup, nil
+}
+
+// ProvideSQLDB exposes the existing underlying pool for SQL-based adapters.
+// It does not create a second connection pool or own cleanup.
+func ProvideSQLDB(provider repository.GormProvider) (*sql.DB, error) {
+	db, err := provider.GetDB(context.Background())
+	if err != nil {
+		return nil, err
+	}
+	return db.DB()
 }
 
 func (p *singleTenantProvider) GetDB(ctx context.Context) (*gorm.DB, error) {
