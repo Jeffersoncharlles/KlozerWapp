@@ -2,7 +2,6 @@ package http
 
 import (
 	"net/http"
-	"time"
 
 	"github.com/go-chi/chi/v5"
 	chiMiddleware "github.com/go-chi/chi/v5/middleware"
@@ -39,7 +38,7 @@ func NewRouter(h RouterHandlers, tokenAuth *jwtauth.JWTAuth) http.Handler {
 	r.Use(chiMiddleware.RealIP)
 	r.Use(chiMiddleware.Logger)
 	r.Use(chiMiddleware.Recoverer)
-	r.Use(chiMiddleware.Timeout(60 * time.Second))
+	// r.Use(chiMiddleware.Timeout(60 * time.Second))
 
 	// CORS para o frontend em React Router conseguir chamar a API
 	r.Use(cors.Handler(cors.Options{

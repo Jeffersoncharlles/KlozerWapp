@@ -5,6 +5,7 @@
 *.pem
 *.key
 .txt
+docs/
 
 # Operating system
 .DS_Store
@@ -62,3 +63,8 @@ blob-report/
 # Generated files
 *.generated.*
 *.local
+
+# Local database state and migration backups (contain WhatsApp keys)
+*.db
+*.db-wal
+*.db-shm

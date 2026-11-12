@@ -9,3 +9,18 @@ Content-Type: application/json
   "email": "admin@admin.com",
   "password": "admin123"
 }
+
+### 1. Escutar o Stream (SSE)
+# O plugin REST Client manterá essa conexão aberta recebendo os dados em tempo real.
+GET {{baseUrl}}/v1/api/sessions/stream
+Authorization: Bearer {{login.response.body.token}}
+Accept: text/event-stream
+Cache-Control: no-cache
+
+### connect whatsapp
+# @name connectWhatsapp
+POST {{baseUrl}}/v1/api/sessions/connect
+Accept: application/json
+Content-Type: application/json
+Authorization: Bearer {{login.response.body.token}}
+

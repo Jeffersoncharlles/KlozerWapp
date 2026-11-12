@@ -5,53 +5,175 @@ import (
 	"time"
 )
 
-// Flow representa a árvore ou o fluxo principal de automação
+// Flow is the editable aggregate, independent of HTTP and persistence models.
 type Flow struct {
-	ID             string     `json:"id" gorm:"primaryKey;type:varchar(36)"`
-	Name           string     `json:"name" gorm:"not null"`
-	TriggerKeyword string     `json:"trigger_keyword"` // Palavra-chave que ativa o fluxo (ex: "menu", "suporte")
-	IsActive       bool       `json:"is_active" gorm:"default:true"`
-	Nodes          []FlowNode `json:"nodes" gorm:"foreignKey:FlowID;constraint:OnDelete:CASCADE"`
-	CreatedAt      time.Time  `json:"created_at"`
-	UpdatedAt      time.Time  `json:"updated_at"`
+	ID                string      `json:"id"`
+	Name              string      `json:"name"`
+	Trigger           string      `json:"trigger"`
+	Keywords          string      `json:"keywords"`
+	KeywordMatch      string      `json:"keywordMatch"`
+	Enabled           bool        `json:"enabled"`
+	Graph             FlowGraph   `json:"graph"`
+	Revision          int64       `json:"revision"`
+	PublishedRevision int64       `json:"publishedRevision"`
+	Warnings          []FlowIssue `json:"warnings"`
+	CreatedAt         time.Time   `json:"createdAt"`
+	UpdatedAt         time.Time   `json:"updatedAt"`
 }
 
-// FlowNodeType define o tipo de ação do nó (ex: message, question, condition, transfer)
-type FlowNodeType string
+type FlowGraph struct {
+	Version     int        `json:"version"`
+	Kind        string     `json:"kind"`
+	StartNodeID string     `json:"startNodeId"`
+	Nodes       []FlowNode `json:"nodes"`
+	Edges       []FlowEdge `json:"edges"`
+}
 
-const (
-	NodeTypeMessage  FlowNodeType = "MESSAGE"  // Envia apenas um texto/mídia
-	NodeTypeQuestion FlowNodeType = "QUESTION" // Faz uma pergunta e espera a resposta do usuário
-	NodeTypeAction   FlowNodeType = "ACTION"   // Executa uma ação interna (atribuir tag, mover kanban)
-)
+type FlowPosition struct {
+	X float64 `json:"x"`
+	Y float64 `json:"y"`
+}
+type FlowOption struct {
+	ID    string `json:"id"`
+	Label string `json:"label"`
+}
 
-// FlowNode representa um passo/bloco dentro do fluxo
+// Each node type uses a documented subset; arbitrary expressions/scripts are
+// deliberately not evaluated. Unknown JSON fields are rejected at delivery.
+type FlowNodeData struct {
+	Label       string       `json:"label"`
+	Description string       `json:"description"`
+	Message     string       `json:"message,omitempty"`
+	Options     []FlowOption `json:"options,omitempty"`
+	Variable    string       `json:"variable,omitempty"`
+	Value       string       `json:"value,omitempty"`
+	Operator    string       `json:"operator,omitempty"`
+	Seconds     int          `json:"seconds,omitempty"`
+	URL         string       `json:"url,omitempty"`
+	Method      string       `json:"method,omitempty"`
+	Body        string       `json:"body,omitempty"`
+}
 type FlowNode struct {
-	ID         string       `json:"id" gorm:"primaryKey;type:varchar(36)"`
-	FlowID     string       `json:"flow_id" gorm:"type:varchar(36);not null"`
-	Type       FlowNodeType `json:"type" gorm:"not null"`
-	Content    string       `json:"content" gorm:"type:text"` // O texto da mensagem ou pergunta
-	NextNodeID string       `json:"next_node_id"`             // ID do próximo nó caso seja linear
-	Options    string       `json:"options" gorm:"type:text"` // JSON guardando opções de menu (se houver)
-	CreatedAt  time.Time    `json:"created_at"`
+	ID       string       `json:"id"`
+	Type     string       `json:"type"`
+	Position FlowPosition `json:"position"`
+	Data     FlowNodeData `json:"data"`
+}
+type FlowEdge struct {
+	ID           string  `json:"id"`
+	Source       string  `json:"source"`
+	Target       string  `json:"target"`
+	SourceHandle *string `json:"sourceHandle"`
+	TargetHandle *string `json:"targetHandle"`
+}
+type FlowSummary struct {
+	ID                string `json:"id"`
+	Name              string `json:"name"`
+	Kind              string `json:"kind"`
+	Keywords          string `json:"keywords"`
+	Enabled           bool   `json:"enabled"`
+	Steps             int    `json:"steps"`
+	Revision          int64  `json:"revision"`
+	PublishedRevision int64  `json:"publishedRevision"`
+}
+type FlowIssue struct {
+	Field   string `json:"field"`
+	Message string `json:"message"`
+}
+type FlowError struct {
+	Code    string
+	Message string
+	Fields  []FlowIssue
 }
 
-// FlowRepository define o contrato com o banco de dados
+func (e *FlowError) Error() string { return e.Message }
+func FlowNotFound() error          { return &FlowError{Code: "not_found", Message: "fluxo não encontrado"} }
+func FlowConflict() error {
+	return &FlowError{Code: "revision_conflict", Message: "o fluxo foi alterado; recarregue antes de salvar"}
+}
+
+type FlowPatch struct {
+	Revision     int64      `json:"revision"`
+	Name         *string    `json:"name"`
+	Trigger      *string    `json:"trigger"`
+	Keywords     *string    `json:"keywords"`
+	KeywordMatch *string    `json:"keywordMatch"`
+	Enabled      *bool      `json:"enabled"`
+	Graph        *FlowGraph `json:"graph"`
+}
 type FlowRepository interface {
-	Create(ctx context.Context, flow *Flow) error
-	GetByID(ctx context.Context, id string) (*Flow, error)
-	GetByKeyword(ctx context.Context, keyword string) (*Flow, error)
-	List(ctx context.Context) ([]Flow, error)
-	Delete(ctx context.Context, id string) error
+	Create(context.Context, *Flow) error
+	GetByID(context.Context, string) (*Flow, error)
+	List(context.Context, string) ([]FlowSummary, error)
+	Update(context.Context, *Flow, int64) error
+	Publish(context.Context, *Flow, int64) error
+	Delete(context.Context, string, int64) error
+	GetBinding(context.Context) (string, error)
+	Bind(context.Context, string) error
+}
+type FlowUseCase interface {
+	CreateFlow(context.Context, string) (*Flow, error)
+	ListFlows(context.Context, string) ([]FlowSummary, error)
+	GetFlow(context.Context, string) (*Flow, error)
+	UpdateFlow(context.Context, string, FlowPatch) (*Flow, error)
+	PublishFlow(context.Context, string, int64) (*Flow, error)
+	DuplicateFlow(context.Context, string) (*Flow, error)
+	DeleteFlow(context.Context, string, int64) error
+	GetBinding(context.Context) (string, error)
+	BindFlow(context.Context, string) error
 }
 
-// FlowUseCase define as regras de negócio
-type FlowUseCase interface {
-	CreateFlow(ctx context.Context, name, triggerKeyword string, nodes []FlowNode) (*Flow, error)
-	ListFlows(ctx context.Context) ([]Flow, error)
-	GetFlow(ctx context.Context, id string) (*Flow, error)
-	DeleteFlow(ctx context.Context, id string) error
-
-	// Executa o próximo passo do chatbot quando chega uma mensagem no WhatsApp
-	ProcessIncomingMessage(ctx context.Context, phone, messageContent string) (bool, error)
+// Runtime ports deliberately separate execution from flow management.
+type FlowIncoming struct {
+	ID           string    `json:"id"`
+	ConnectionID string    `json:"connectionId"`
+	ChatID       string    `json:"chatId"`
+	Phone        string    `json:"phone"`
+	Text         string    `json:"text"`
+	OptionID     string    `json:"optionId"`
+	Timestamp    time.Time `json:"timestamp"`
+}
+type FlowSession struct {
+	EventID      string
+	ID           string
+	FlowID       string
+	Version      int64
+	ConnectionID string
+	ChatID       string
+	Phone        string
+	NodeID       string
+	State        string
+	Variables    map[string]string
+	WakeAt       *time.Time
+	Transitions  int
+}
+type FlowEffect struct {
+	ID        string
+	SessionID string
+	Phone     string
+	Text      string
+	Attempts  int
+}
+type FlowRuntimeStore interface {
+	Receive(context.Context, FlowIncoming) (bool, error)
+	Pending(context.Context) ([]FlowIncoming, error)
+	Complete(context.Context, string, bool) error
+	Session(context.Context, FlowIncoming) (*FlowSession, error)
+	Published(context.Context, string, int64) (*Flow, error)
+	BoundPublished(context.Context) (*Flow, error)
+	SaveSession(context.Context, *FlowSession, []FlowEffect) error
+	Due(context.Context, time.Time) ([]FlowSession, error)
+	Effects(context.Context) ([]FlowEffect, error)
+	FinishEffect(context.Context, string, bool) error
+}
+type FlowRuntimeUseCase interface {
+	Receive(context.Context, FlowIncoming) error
+	Run(context.Context)
+	Simulate(context.Context, string, []string) ([]string, error)
+}
+type FlowSender interface {
+	SendFlowMessage(context.Context, string, string, string) error
+}
+type FlowHTTPClient interface {
+	Execute(context.Context, FlowNodeData) (string, error)
 }

@@ -2,89 +2,80 @@ package whatsapp
 
 import (
 	"context"
+	"encoding/json"
 	"log/slog"
-	"time"
-
-	"go.mau.fi/whatsmeow"
-	"go.mau.fi/whatsmeow/types/events"
+	"sync"
 
 	"github.com/Jeffersoncharlles/KlozerWapp/internal/domain"
+	"go.mau.fi/whatsmeow"
+	"go.mau.fi/whatsmeow/types/events"
 )
 
-type incomingMessageTask struct {
-	Phone     string
-	Content   string
-	MsgType   string
-	Timestamp time.Time
-}
-
 type WhatsAppListener struct {
-	client *whatsmeow.Client
-	chatUC domain.ChatUseCase
-	queue  chan incomingMessageTask // <-- A Fila nativa do Go (Channel)
+	client  *whatsmeow.Client
+	chatUC  domain.ChatUseCase
+	ctx     context.Context
+	mu      sync.Mutex
+	stopped bool
+	wg      sync.WaitGroup
 }
 
-// O Google Wire chama isso e injeta o UseCase!
-func NewWhatsAppListener(client *whatsmeow.Client, chatUC domain.ChatUseCase) *WhatsAppListener {
-	listener := &WhatsAppListener{
-		client: client,
-		chatUC: chatUC,
-		queue:  make(chan incomingMessageTask, 1000),
-		// Cria um canal com um "buffer" de 1000 posições.
-		// Suporta um pico de 1000 mensagens simultâneas sem engasgar o WhatsApp.
-	}
-	client.AddEventHandler(listener.eventHandler)
-	go listener.processQueue()
-	return listener
-}
-
-func (l *WhatsAppListener) eventHandler(evt interface{}) {
-	switch v := evt.(type) {
-	case *events.Message:
-		if v.Info.IsFromMe || v.Info.IsGroup {
-			return
-		}
-
-		phone := v.Info.Sender.User
-		content := v.Message.GetConversation()
-
-		if content == "" {
-			content = "[Mídia Recebida]"
-		}
-
-		// Prepara a tarefa
-		task := incomingMessageTask{
-			Phone:     phone,
-			Content:   content,
-			MsgType:   "text",
-			Timestamp: v.Info.Timestamp,
-		}
-
-		// Tenta jogar na fila sem bloquear (padrão de proteção)
-		select {
-		case l.queue <- task:
-			// Sucesso! A mensagem já está na memória do Go.
-		default:
-			// Se o buffer de 1000 encher (algo raro, tipo um ataque de spam),
-			// ele ignora a mensagem aqui em vez de derrubar a aplicação.
-			slog.Warn("ALERTA: Fila de mensagens lotada! Mensagem descartada.", "phone", phone)
-		}
+func NewWhatsAppListener(client *whatsmeow.Client, chat domain.ChatUseCase) (*WhatsAppListener, func()) {
+	ctx, cancel := context.WithCancel(context.Background())
+	l := &WhatsAppListener{client: client, chatUC: chat, ctx: ctx}
+	id := client.AddEventHandlerWithSuccessStatus(l.eventHandler)
+	return l, func() {
+		l.mu.Lock()
+		l.stopped = true
+		l.mu.Unlock()
+		cancel()
+		client.RemoveEventHandler(id)
+		l.wg.Wait()
 	}
 }
 
-func (l *WhatsAppListener) processQueue() {
-	ctx := context.Background()
-
-	// O `for range` fica "dormindo" sem gastar CPU até chegar algo na fila.
-	// Quando chega, ele acorda, pega a tarefa e processa.
-	for task := range l.queue {
-		slog.Info("Processando mensagem da fila", "phone", task.Phone)
-
-		err := l.chatUC.HandleIncomingMessage(ctx, task.Phone, task.Content, task.MsgType, task.Timestamp)
-		if err != nil {
-			slog.Error("Erro ao processar mensagem da fila", "phone", task.Phone, "err", err)
-		} else {
-			slog.Info("✅ Mensagem salva e processada com sucesso!", "phone", task.Phone)
+func (l *WhatsAppListener) eventHandler(evt interface{}) bool {
+	v, ok := evt.(*events.Message)
+	if !ok || v.Info.IsFromMe || v.Info.IsGroup || l.client.Store.ID == nil {
+		return true
+	}
+	l.mu.Lock()
+	if l.stopped {
+		l.mu.Unlock()
+		return false
+	}
+	l.wg.Add(1)
+	l.mu.Unlock()
+	defer l.wg.Done()
+	message := v.Message
+	content := message.GetConversation()
+	if content == "" {
+		content = message.GetExtendedTextMessage().GetText()
+	}
+	option := message.GetButtonsResponseMessage().GetSelectedButtonID()
+	if option == "" {
+		option = message.GetListResponseMessage().GetSingleSelectReply().GetSelectedRowID()
+	}
+	if interactive := message.GetInteractiveResponseMessage().GetNativeFlowResponseMessage(); interactive != nil {
+		var selected struct {
+			ID string `json:"id"`
+		}
+		if json.Unmarshal([]byte(interactive.GetParamsJSON()), &selected) == nil {
+			option = selected.ID
 		}
 	}
+	if content == "" {
+		content = option
+	}
+	if content == "" {
+		content = "[Mídia Recebida]"
+	}
+	e := domain.FlowIncoming{ID: string(v.Info.ID), ConnectionID: l.client.Store.ID.String(), ChatID: v.Info.Chat.String(), Phone: v.Info.Sender.String(), Text: content, OptionID: option, Timestamp: v.Info.Timestamp}
+	// Persist before returning; no lossy in-memory queue between the protocol
+	// event and the durable inbox. The runtime worker performs network effects.
+	if err := l.chatUC.HandleIncomingMessage(l.ctx, e); err != nil {
+		slog.Error("persistir evento WhatsApp", "message_id", e.ID, "err", err)
+		return false
+	}
+	return true
 }

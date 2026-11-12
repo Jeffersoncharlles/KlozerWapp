@@ -7,27 +7,29 @@
 package main
 
 import (
+	"context"
 	"github.com/Jeffersoncharlles/KlozerWapp/internal/config"
 	"github.com/Jeffersoncharlles/KlozerWapp/internal/delivery/http"
 	"github.com/Jeffersoncharlles/KlozerWapp/internal/delivery/http/handler"
 	"github.com/Jeffersoncharlles/KlozerWapp/internal/domain"
+	"github.com/Jeffersoncharlles/KlozerWapp/internal/infra/httpclient"
 	"github.com/Jeffersoncharlles/KlozerWapp/internal/infra/sse"
 	"github.com/Jeffersoncharlles/KlozerWapp/internal/infra/whatsapp"
 	"github.com/Jeffersoncharlles/KlozerWapp/internal/repository/sqlite"
 	"github.com/Jeffersoncharlles/KlozerWapp/internal/usecase"
 	"github.com/go-chi/jwtauth/v5"
 	"github.com/google/wire"
-	"log/slog"
 	http2 "net/http"
+	"sync"
 )
 
 // Injectors from wire.go:
 
 // Agora retornamos apenas o *App e o error
-func InitializeApp(cfg *config.Config) (*App, error) {
-	gormProvider, err := sqlite.NewGormProvider(cfg)
+func InitializeApp(cfg *config.Config) (*App, func(), error) {
+	gormProvider, cleanup, err := sqlite.NewGormProvider(cfg)
 	if err != nil {
-		return nil, err
+		return nil, nil, err
 	}
 	userRepository := sqlite.NewUserRepository(gormProvider)
 	jwtAuth := ProvideJWTAuth(cfg)
@@ -39,16 +41,25 @@ func InitializeApp(cfg *config.Config) (*App, error) {
 	messageRepository := sqlite.NewMessageRepository(gormProvider)
 	contactRepository := sqlite.NewContactRepository(gormProvider)
 	contactUseCase := usecase.NewContactUseCase(contactRepository)
-	client, err := whatsapp.ProvideWhatsmeowClient()
+	db, err := sqlite.ProvideSQLDB(gormProvider)
 	if err != nil {
-		return nil, err
+		cleanup()
+		return nil, nil, err
+	}
+	client, cleanup2, err := whatsapp.ProvideWhatsmeowClient(db)
+	if err != nil {
+		cleanup()
+		return nil, nil, err
 	}
 	whatsAppGateway := whatsapp.NewWhatsAppManager(client)
 	autoReplyUseCase := usecase.NewAutoReplyUseCase(whatsAppGateway, messageRepository)
+	flowRuntimeStore := sqlite.NewFlowRuntimeStore(gormProvider)
 	flowRepository := sqlite.NewFlowRepository(gormProvider)
-	flowUseCase := usecase.NewFlowUseCase(flowRepository, whatsAppGateway)
 	broker := sse.NewBroker()
-	chatUseCase := usecase.NewChatUseCase(messageRepository, contactUseCase, kanbanUseCase, autoReplyUseCase, flowUseCase, broker, whatsAppGateway)
+	flowSender := usecase.NewFlowSender(whatsAppGateway, contactUseCase, messageRepository, broker)
+	flowHTTPClient, cleanup3 := httpclient.NewFlowClient()
+	flowRuntimeUseCase := usecase.NewFlowRuntime(flowRuntimeStore, flowRepository, flowSender, flowHTTPClient, contactUseCase, autoReplyUseCase)
+	chatUseCase := usecase.NewChatUseCase(messageRepository, contactUseCase, kanbanUseCase, autoReplyUseCase, flowRuntimeUseCase, broker, whatsAppGateway)
 	messageHandler := handler.NewMessageHandler(chatUseCase)
 	quickReplyRepository := sqlite.NewQuickReplyRepository(gormProvider)
 	quickReplyUseCase := usecase.NewQuickReplyUseCase(quickReplyRepository)
@@ -56,8 +67,9 @@ func InitializeApp(cfg *config.Config) (*App, error) {
 	tagRepository := sqlite.NewTagRepository(gormProvider)
 	tagUseCase := usecase.NewTagUseCase(tagRepository, kanbanUseCase, broker)
 	tagHandler := handler.NewTagHandler(tagUseCase)
-	sessionHandler := handler.NewSessionHandler(whatsAppGateway, broker)
-	flowHandler := handler.NewFlowHandler(flowUseCase)
+	flowUseCase := usecase.NewFlowUseCase(flowRepository)
+	sessionHandler := handler.NewSessionHandler(whatsAppGateway, broker, flowUseCase)
+	flowHandler := handler.NewFlowHandler(flowUseCase, flowRuntimeUseCase)
 	queueRepository := sqlite.NewQueueRepository(gormProvider)
 	queueUseCase := usecase.NewQueueUseCase(queueRepository)
 	queueHandler := handler.NewQueueHandler(queueUseCase)
@@ -86,16 +98,21 @@ func InitializeApp(cfg *config.Config) (*App, error) {
 		Docs:       docsHandler,
 	}
 	httpHandler := http.NewRouter(routerHandlers, jwtAuth)
-	whatsAppListener := whatsapp.NewWhatsAppListener(client, chatUseCase)
-	app := NewApp(httpHandler, whatsAppListener)
-	return app, nil
+	whatsAppListener, cleanup4 := whatsapp.NewWhatsAppListener(client, chatUseCase)
+	app, cleanup5 := NewApp(httpHandler, whatsAppListener, flowRuntimeUseCase)
+	return app, func() {
+		cleanup5()
+		cleanup4()
+		cleanup3()
+		cleanup2()
+		cleanup()
+	}, nil
 }
 
 // wire.go:
 
 // ProvideJWTAuth cria a instância do jwtauth usando o segredo do .env
 func ProvideJWTAuth(cfg *config.Config) *jwtauth.JWTAuth {
-	slog.Info("DEBUG JWT", "tamanho_chave", len(cfg.JWTSecret))
 	return jwtauth.New("HS256", []byte(cfg.JWTSecret), nil)
 }
 
@@ -105,11 +122,13 @@ var ConfigSet = wire.NewSet(
 
 var InfraWhatsAppSet = wire.NewSet(whatsapp.ProvideWhatsmeowClient, whatsapp.NewWhatsAppManager, whatsapp.NewWhatsAppListener)
 
+var InfraHTTPClientSet = wire.NewSet(httpclient.NewFlowClient)
+
 var InfraSSESet = wire.NewSet(sse.NewBroker, wire.Bind(new(domain.Broker), new(*sse.Broker)))
 
-var RepositorySet = wire.NewSet(sqlite.NewGormProvider, sqlite.NewUserRepository, sqlite.NewKanbanRepository, sqlite.NewMessageRepository, sqlite.NewQuickReplyRepository, sqlite.NewTagRepository, sqlite.NewContactRepository, sqlite.NewFlowRepository, sqlite.NewQueueRepository, sqlite.NewReportRepository, sqlite.NewCampaignRepository, sqlite.NewCallRepository)
+var RepositorySet = wire.NewSet(sqlite.NewGormProvider, sqlite.ProvideSQLDB, sqlite.NewUserRepository, sqlite.NewKanbanRepository, sqlite.NewMessageRepository, sqlite.NewQuickReplyRepository, sqlite.NewTagRepository, sqlite.NewContactRepository, sqlite.NewFlowRepository, sqlite.NewFlowRuntimeStore, sqlite.NewQueueRepository, sqlite.NewReportRepository, sqlite.NewCampaignRepository, sqlite.NewCallRepository)
 
-var UseCaseSet = wire.NewSet(usecase.NewAuthUseCase, usecase.NewUserUseCase, usecase.NewKanbanUseCase, usecase.NewChatUseCase, usecase.NewQuickReplyUseCase, usecase.NewAutoReplyUseCase, usecase.NewContactUseCase, usecase.NewTagUseCase, usecase.NewFlowUseCase, usecase.NewQueueUseCase, usecase.NewReportUseCase, usecase.NewCampaignUseCase, usecase.NewCallUseCase)
+var UseCaseSet = wire.NewSet(usecase.NewAuthUseCase, usecase.NewUserUseCase, usecase.NewKanbanUseCase, usecase.NewChatUseCase, usecase.NewQuickReplyUseCase, usecase.NewAutoReplyUseCase, usecase.NewContactUseCase, usecase.NewTagUseCase, usecase.NewFlowUseCase, usecase.NewFlowRuntime, usecase.NewFlowSender, usecase.NewQueueUseCase, usecase.NewReportUseCase, usecase.NewCampaignUseCase, usecase.NewCallUseCase)
 
 var HandlerSet = wire.NewSet(handler.NewAuthHandler, handler.NewKanbanHandler, handler.NewMessageHandler, handler.NewQuickReplyHandler, handler.NewTagHandler, handler.NewSessionHandler, handler.NewFlowHandler, handler.NewQueueHandler, handler.NewReportHandler, handler.NewCampaignHandler, handler.NewCallHandler, handler.NewDocsHandler, wire.Struct(new(http.RouterHandlers), "*"))
 
@@ -119,9 +138,13 @@ type App struct {
 	Listener *whatsapp.WhatsAppListener
 }
 
-func NewApp(router http2.Handler, listener *whatsapp.WhatsAppListener) *App {
+func NewApp(router http2.Handler, listener *whatsapp.WhatsAppListener, runtime domain.FlowRuntimeUseCase) (*App, func()) {
+	ctx, cancel := context.WithCancel(context.Background())
+	var wg sync.WaitGroup
+	wg.Add(1)
+	go func() { defer wg.Done(); runtime.Run(ctx) }()
 	return &App{
 		Router:   router,
 		Listener: listener,
-	}
+	}, func() { cancel(); wg.Wait() }
 }

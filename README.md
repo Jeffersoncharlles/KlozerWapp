@@ -130,8 +130,40 @@ ambiente:
 
 > ⚠️ Em produção, substitua o segredo JWT padrão e não versione credenciais.
 
-O CRM usa `crm.db` para os dados da aplicação e `wa_sessions.db` para a sessão
-do WhatsApp. As tabelas são criadas e atualizadas automaticamente pelo GORM.
+O CRM usa um único SQLite, definido por `DB_PATH` (padrão `crm.db`), para dados
+da aplicação, automações e sessão do WhatsApp. Não é necessário criar `.env`:
+os defaults permitem iniciar com `go run ./cmd`.
+
+O Wire injeta o mesmo pool SQL no GORM e no SQLStore do Whatsmeow. O GORM
+inicializa as tabelas do CRM; `container.Upgrade(ctx)` inicializa e atualiza
+as tabelas `whatsmeow_*` no mesmo arquivo. O encerramento fecha o pool uma
+única vez, após parar workers, listener e cliente WhatsApp.
+
+Esta versão inicializa bancos novos; não importa `wa_sessions.db` ou fluxos
+do formato anterior.
+
+### Automações
+
+Abra `/dashboard/automations`, crie um fluxo e conecte as opções do menu aos
+próximos passos. Salve o rascunho, publique uma versão válida, ative o fluxo
+e vincule-o à conexão usando **Vincular conexão**. Publicação e vínculo
+exigem perfil `ADMIN`.
+
+- Salvar não altera o grafo nem os gatilhos da versão em execução.
+- Novas conversas usam a última versão publicada do fluxo vinculado.
+- Conversas existentes permanecem na versão em que começaram.
+- Desativar ou excluir cancela sessões e saídas pendentes; um envio já em
+  andamento pode terminar.
+- O menu usa opções numeradas em texto; respostas numéricas ou pelo texto da
+  opção escolhem a saída. IDs de respostas interativas recebidas também são
+  reconhecidos pelo adaptador WhatsApp.
+- `/cancelar` encerra a sessão. `/atendente` transfere e suspende novas
+  automações nessa conversa até `/cancelar` ou a desativação do fluxo.
+- O simulador usa as mesmas transições, mas não envia mensagens, não chama
+  APIs reais e avança intervalos sem esperar.
+
+Consulte [o contrato de automações](docs/automations-api.md) para payloads,
+handles, limites e política de retentativas.
 
 
 

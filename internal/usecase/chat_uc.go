@@ -13,8 +13,8 @@ type chatUseCase struct {
 	kanbanUC  domain.KanbanUseCase
 	autoRepUC AutoReplyUseCase
 	waGateway domain.WhatsAppGateway // Comunica direto com whatsmeow ou Cloud API
-	flowUC    domain.FlowUseCase     // <-- ADICIONADO: Motor do Chatbot
-	broker    domain.Broker          // <-- ADICIONADO: Para o React atualizar em tempo real
+	flowUC    domain.FlowRuntimeUseCase
+	broker    domain.Broker // <-- ADICIONADO: Para o React atualizar em tempo real
 }
 
 func NewChatUseCase(
@@ -22,7 +22,7 @@ func NewChatUseCase(
 	cuc domain.ContactUseCase,
 	kuc domain.KanbanUseCase,
 	arc AutoReplyUseCase,
-	fuc domain.FlowUseCase,
+	fuc domain.FlowRuntimeUseCase,
 	brk domain.Broker,
 	wa domain.WhatsAppGateway,
 ) domain.ChatUseCase {
@@ -38,7 +38,8 @@ func NewChatUseCase(
 }
 
 // HandleIncomingMessage é chamado pelo Bridge/Listener quando o WhatsMeow recebe uma msg
-func (uc *chatUseCase) HandleIncomingMessage(ctx context.Context, phone, content, msgType string, timestamp time.Time) error {
+func (uc *chatUseCase) HandleIncomingMessage(ctx context.Context, event domain.FlowIncoming) error {
+	phone, content := event.Phone, event.Text
 	// 1. Garante que o Contato existe no banco
 	contact, err := uc.contactUC.CreateOrUpdate(ctx, phone, "Cliente "+phone, "")
 	if err != nil {
@@ -55,10 +56,12 @@ func (uc *chatUseCase) HandleIncomingMessage(ctx context.Context, phone, content
 	msg := &domain.Message{
 		ContactID: contact.ID,
 		Content:   content,
-		Type:      msgType,
+		Type:      "text",
 		IsFromMe:  false,
-		Timestamp: timestamp,
+		Timestamp: event.Timestamp,
 	}
+	key := IncomingKey(event)
+	msg.ExternalID = &key
 	if err := uc.msgRepo.Create(ctx, msg); err != nil {
 		return err
 	}
@@ -69,14 +72,7 @@ func (uc *chatUseCase) HandleIncomingMessage(ctx context.Context, phone, content
 
 	// 5. Tenta processar pelo Flow Builder (Chatbot) primeiro
 	// Se a mensagem for "Menu", por exemplo, o bot assume.
-	flowTriggered, err := uc.flowUC.ProcessIncomingMessage(ctx, phone, content)
-	if err == nil && flowTriggered {
-		// Se o chatbot respondeu, não mandamos a mensagem de boas-vindas padrão
-		return nil
-	}
-
-	// 6. Se não acionou nenhum fluxo, avalia auto-resposta (fora de hora, saudação)
-	return uc.autoRepUC.ProcessWelcomeMessage(ctx, contact)
+	return uc.flowUC.Receive(ctx, event)
 }
 
 // SendMessage é chamado pelo React (via HTTP) quando o Atendente responde
