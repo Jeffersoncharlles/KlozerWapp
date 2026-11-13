@@ -21,6 +21,7 @@ func (h *TagHandler) RegisterRoutes(r chi.Router) {
 	r.Route("/tags", func(r chi.Router) {
 		r.Get("/", h.List)
 		r.Post("/", h.Create)
+		r.Delete("/{tagID}", h.Delete)
 		r.Post("/{tagID}/contacts/{contactID}", h.AddToContact)
 		r.Delete("/{tagID}/contacts/{contactID}", h.RemoveFromContact)
 	})
@@ -60,6 +61,18 @@ func (h *TagHandler) RemoveFromContact(w http.ResponseWriter, r *http.Request) {
 }
 
 func (h *TagHandler) List(w http.ResponseWriter, r *http.Request) {
-	tags, _ := h.tagUC.List(r.Context())
+	tags, err := h.tagUC.List(r.Context())
+	if err != nil {
+		response.Error(w, http.StatusInternalServerError, "não foi possível carregar as tags")
+		return
+	}
 	response.JSON(w, http.StatusOK, tags)
+}
+
+func (h *TagHandler) Delete(w http.ResponseWriter, r *http.Request) {
+	if err := h.tagUC.Delete(r.Context(), chi.URLParam(r, "tagID")); err != nil {
+		response.Error(w, http.StatusBadRequest, err.Error())
+		return
+	}
+	response.JSON(w, http.StatusNoContent, nil)
 }

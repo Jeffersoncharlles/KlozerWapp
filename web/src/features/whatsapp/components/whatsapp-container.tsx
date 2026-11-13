@@ -4,6 +4,7 @@ import { Button } from '../../../components/ui/button'
 import { PageContainer, WorkspaceHeader } from '../../../components/workspace-header'
 import { useWhatsAppConnection } from '../hooks/use-whatsapp-connection'
 import type { WhatsAppLoaderData } from '../types'
+import { ScheduleCard } from './schedule-card'
 import { WhatsAppConfigurationCard } from './whatsapp-configuration-card'
 import { WhatsAppConnectionCard } from './whatsapp-connection-card'
 import { WhatsAppSetupCard } from './whatsapp-setup-card'
@@ -55,6 +56,7 @@ export function WhatsAppContainer({ data }: { data: WhatsAppLoaderData }) {
           />
           <WhatsAppSetupCard />
           <WhatsAppConfigurationCard key={JSON.stringify(data.configuration ?? {})} data={data} />
+          <ScheduleCard key={JSON.stringify(data.schedule ?? {})} data={data} />
         </div>
         <WhatsAppStatusCard connected={connection.connected} />
       </main>

@@ -2,6 +2,7 @@ import { z } from 'zod'
 
 import { API_BASE_URL } from '../../../core/constants/api'
 import { getAuthToken } from '../../../core/middlewares/authenticate'
+import { scheduleSchema, type Schedule } from '../domain/schedule'
 import {
   whatsappAutomationOptionSchema,
   whatsappConfigurationSchema,
@@ -15,6 +16,8 @@ const whatsappConnectionSchema = z.object({
   phone: z.string().optional(),
   name: z.string().optional(),
 })
+
+export type WhatsAppConnection = z.infer<typeof whatsappConnectionSchema>
 
 const connectionMessageSchema = z.object({
   message: z.string().min(1),
@@ -66,13 +69,14 @@ async function request<T>(
 
 export async function loadWhatsAppConnection(): Promise<WhatsAppLoaderData> {
   try {
-    const [connection, configuration, automations, queues] = await Promise.all([
+    const [connection, configuration, automations, queues, schedule] = await Promise.all([
       request('/sessions/status', whatsappConnectionSchema),
       request('/sessions/configuration', whatsappConfigurationSchema),
       request('/flows/?kind=chat', z.array(whatsappAutomationOptionSchema)),
       request('/queues/', z.array(whatsappQueueOptionSchema)),
+      request('/schedule', scheduleSchema),
     ])
-    return { connection, configuration, automations, queues }
+    return { connection, configuration, automations, queues, schedule }
   } catch (error) {
     return {
       error:
@@ -81,6 +85,14 @@ export async function loadWhatsAppConnection(): Promise<WhatsAppLoaderData> {
           : (error as Error).message,
     }
   }
+}
+
+export function loadWhatsAppStatus(signal?: AbortSignal) {
+  return request('/sessions/status', whatsappConnectionSchema, 'GET', undefined, signal)
+}
+
+export function saveSchedule(schedule: Schedule, signal?: AbortSignal) {
+  return request('/schedule', scheduleSchema, 'PUT', schedule, signal)
 }
 
 export async function saveWhatsAppConfiguration(

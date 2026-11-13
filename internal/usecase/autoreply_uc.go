@@ -15,16 +15,26 @@ type AutoReplyUseCase interface {
 type autoReplyUseCase struct {
 	waGateway domain.WhatsAppGateway
 	msgRepo   domain.MessageRepository
+	schedules domain.ScheduleRepository
 }
 
-func NewAutoReplyUseCase(wa domain.WhatsAppGateway, msgRepo domain.MessageRepository) AutoReplyUseCase {
+func NewAutoReplyUseCase(wa domain.WhatsAppGateway, msgRepo domain.MessageRepository, schedules domain.ScheduleRepository) AutoReplyUseCase {
 	return &autoReplyUseCase{
 		waGateway: wa,
 		msgRepo:   msgRepo,
+		schedules: schedules,
 	}
 }
 
 func (uc *autoReplyUseCase) ProcessWelcomeMessage(ctx context.Context, contact *domain.Contact) error {
+	schedule, err := uc.schedules.Get(ctx)
+	if err != nil {
+		return err
+	}
+	if !schedule.Enabled || !schedule.IsConfigured() || !schedule.AutoReplyEnabled {
+		return nil
+	}
+
 	// 1. REGRA DO INTERVALO (Anti-Spam de Boas-vindas):
 	// Busca a última mensagem enviada por nós (Atendente ou Bot) para esse contato
 	lastMsgs, err := uc.msgRepo.ListByContactID(ctx, contact.ID, 50, 0)
@@ -41,20 +51,18 @@ func (uc *autoReplyUseCase) ProcessWelcomeMessage(ctx context.Context, contact *
 	}
 
 	// 2. REGRA DE HORÁRIO DE ATENDIMENTO:
-	// No futuro, você pode buscar isso de um 'SettingsRepository'
-	now := time.Now()
-	// Exemplo: Sabado (6) e Domingo (0) ou fora das 8h às 18h
-	isWeekend := now.Weekday() == time.Saturday || now.Weekday() == time.Sunday
-	isOutOfHours := now.Hour() < 8 || now.Hour() >= 18
-
-	if isWeekend || isOutOfHours {
-		msgForaDeHora := "Olá! Nosso horário de atendimento é de segunda a sexta, das 8h às 18h. Deixe sua dúvida e retornaremos no próximo dia útil."
-		return uc.sendWelcome(ctx, contact, msgForaDeHora)
+	if !schedule.IsOpen(time.Now()) {
+		if schedule.ClosedMessage == "" {
+			return nil
+		}
+		return uc.sendWelcome(ctx, contact, schedule.ClosedMessage)
 	}
 
 	// 3. REGRA DE BOAS-VINDAS (Dentro do horário e após 24h sem falar):
-	msgBoasVindas := "Olá! Seja bem-vindo. Como podemos te ajudar hoje?\n1 - Comercial\n2 - Suporte"
-	return uc.sendWelcome(ctx, contact, msgBoasVindas)
+	if schedule.WelcomeMessage == "" {
+		return nil
+	}
+	return uc.sendWelcome(ctx, contact, schedule.WelcomeMessage)
 }
 
 func (uc *autoReplyUseCase) sendWelcome(ctx context.Context, contact *domain.Contact, text string) error {

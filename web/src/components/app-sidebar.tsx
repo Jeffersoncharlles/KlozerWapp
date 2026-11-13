@@ -11,11 +11,14 @@ import {
   Phone,
   PlugZap,
   Settings,
+  Tags,
   UsersRound,
+  UserRoundCog,
   Zap,
 } from 'lucide-react'
 import { NavLink } from 'react-router'
 
+import { useWhatsAppStatus } from '../features/whatsapp/hooks/use-whatsapp-status'
 import { Avatar, AvatarFallback } from './ui/avatar'
 import {
   Sidebar,
@@ -35,6 +38,8 @@ const mainNavigation = [
   { title: 'Visão geral', href: '/dashboard', icon: LayoutDashboard },
   { title: 'Conversas', href: '/dashboard/conversations', icon: MessageCircle },
   { title: 'Contatos', href: '/dashboard/contacts', icon: ContactRound },
+  { title: 'Tags', href: '/dashboard/tags', icon: Tags },
+  { title: 'Usuários', href: '/dashboard/users', icon: UserRoundCog },
   { title: 'Filas', href: '/dashboard/queues', icon: UsersRound },
   { title: 'Kanban', href: '/dashboard/kanban', icon: Kanban },
 ]
@@ -73,24 +78,32 @@ function NavigationGroup({ label, items }: { label: string; items: typeof mainNa
 }
 
 export function AppSidebar() {
+  const { connected } = useWhatsAppStatus()
+
   return (
     <Sidebar collapsible="icon">
-      <SidebarHeader className="p-4">
-        <div className="flex items-center gap-3">
+      <SidebarHeader className="p-4 group-data-[collapsible=icon]:p-2">
+        <div className="flex items-center gap-3 group-data-[collapsible=icon]:justify-center group-data-[collapsible=icon]:gap-0">
           <div className="flex size-9 shrink-0 items-center justify-center rounded-lg bg-primary text-primary-foreground">
             <MessageCircle className="size-5" />
           </div>
-          <div className="grid flex-1 text-left text-sm leading-tight">
+          <div className="grid min-w-0 flex-1 text-left text-sm leading-tight group-data-[collapsible=icon]:hidden">
             <span className="font-bold tracking-tight">Klozer</span>
             <span className="text-xs text-sidebar-foreground/60">CRM WhatsApp</span>
           </div>
         </div>
       </SidebarHeader>
       <div className="mx-3 mb-1 flex items-center gap-2 rounded-lg bg-secondary px-3 py-2 group-data-[collapsible=icon]:mx-2 group-data-[collapsible=icon]:size-8 group-data-[collapsible=icon]:justify-center group-data-[collapsible=icon]:p-0">
-        <span className="size-2 shrink-0 rounded-full bg-emerald-500" />
+        <span
+          className={`size-2 shrink-0 rounded-full ${connected ? 'bg-emerald-500' : 'bg-muted-foreground/50'}`}
+        />
         <div className="min-w-0 flex-1 group-data-[collapsible=icon]:hidden">
-          <p className="truncate text-xs font-semibold">WhatsApp conectado</p>
-          <p className="truncate text-[10px] text-sidebar-foreground/60">Sessão principal online</p>
+          <p className="truncate text-xs font-semibold">
+            WhatsApp {connected ? 'conectado' : 'desconectado'}
+          </p>
+          <p className="truncate text-[10px] text-sidebar-foreground/60">
+            {connected ? 'Sessão principal online' : 'Conecte uma sessão para atender'}
+          </p>
         </div>
         <ChevronRight className="size-4 text-sidebar-foreground/60 group-data-[collapsible=icon]:hidden" />
       </div>

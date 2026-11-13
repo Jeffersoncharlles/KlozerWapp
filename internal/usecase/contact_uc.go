@@ -3,6 +3,7 @@ package usecase
 import (
 	"context"
 	"errors"
+	"strings"
 
 	"github.com/Jeffersoncharlles/KlozerWapp/internal/domain"
 )
@@ -23,6 +24,9 @@ func (uc *contactUseCase) CreateOrUpdate(ctx context.Context, phone, name, avata
 	// Verifica se já existe
 	contact, err := uc.repo.GetByPhone(ctx, phone)
 	if err == nil && contact != nil {
+		if contact.Type == "" {
+			contact.Type = "person"
+		}
 		// Se existir, atualiza nome ou avatar se vieram preenchidos e diferentes
 		updated := false
 		if name != "" && contact.Name != name && (contact.Name == "" || isGeneratedContactName(contact.Name)) {
@@ -45,9 +49,46 @@ func (uc *contactUseCase) CreateOrUpdate(ctx context.Context, phone, name, avata
 		Phone:     phone,
 		Name:      name,
 		AvatarURL: avatarURL,
+		Type:      "person",
 	}
 	err = uc.repo.Create(ctx, newContact)
 	return newContact, err
+}
+
+func (uc *contactUseCase) CreateManual(ctx context.Context, contact *domain.Contact) error {
+	contact.Name = strings.TrimSpace(contact.Name)
+	contact.Phone = strings.TrimSpace(contact.Phone)
+	contact.Type = strings.ToLower(strings.TrimSpace(contact.Type))
+	if contact.Type == "" {
+		contact.Type = "person"
+	}
+	if contact.Name == "" || contact.Phone == "" {
+		return errors.New("nome e telefone são obrigatórios")
+	}
+	if contact.Type != "person" && contact.Type != "group" {
+		return errors.New("tipo de contato inválido")
+	}
+	return uc.repo.Create(ctx, contact)
+}
+
+func (uc *contactUseCase) Update(ctx context.Context, contact *domain.Contact) error {
+	contact.Name = strings.TrimSpace(contact.Name)
+	contact.Phone = strings.TrimSpace(contact.Phone)
+	if contact.Name == "" || contact.Phone == "" {
+		return errors.New("nome e telefone são obrigatórios")
+	}
+	return uc.repo.Update(ctx, contact)
+}
+
+func (uc *contactUseCase) ListFiltered(ctx context.Context, filter domain.ContactFilter) (*domain.ContactList, error) {
+	return uc.repo.ListFiltered(ctx, filter)
+}
+
+func (uc *contactUseCase) Archive(ctx context.Context, id string, archived bool) error {
+	if id == "" {
+		return errors.New("id do contato é obrigatório")
+	}
+	return uc.repo.Archive(ctx, id, archived)
 }
 
 func (uc *contactUseCase) GetByPhone(ctx context.Context, phone string) (*domain.Contact, error) {

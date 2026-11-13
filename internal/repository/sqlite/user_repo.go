@@ -84,6 +84,18 @@ func (r *userRepo) CountActiveUsers(ctx context.Context) (int64, error) {
 	return count, nil
 }
 
+func (r *userRepo) CountActiveAdmins(ctx context.Context) (int64, error) {
+	db, err := r.provider.GetDB(ctx)
+	if err != nil {
+		return 0, err
+	}
+	var count int64
+	if err := db.Model(&domain.User{}).Where("is_active = ? AND role = ?", true, "ADMIN").Count(&count).Error; err != nil {
+		return 0, err
+	}
+	return count, nil
+}
+
 func (r *userRepo) UpdateStatus(ctx context.Context, id string, isActive bool) error {
 	db, err := r.provider.GetDB(ctx)
 	if err != nil {
