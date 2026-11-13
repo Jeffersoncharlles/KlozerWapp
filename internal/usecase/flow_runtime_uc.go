@@ -16,16 +16,17 @@ import (
 )
 
 type flowRuntime struct {
-	store    domain.FlowRuntimeStore
-	flows    domain.FlowRepository
-	sender   domain.FlowSender
-	http     domain.FlowHTTPClient
-	contacts domain.ContactUseCase
-	welcome  AutoReplyUseCase
+	store     domain.FlowRuntimeStore
+	flows     domain.FlowRepository
+	sender    domain.FlowSender
+	http      domain.FlowHTTPClient
+	contacts  domain.ContactUseCase
+	welcome   AutoReplyUseCase
+	schedules domain.ScheduleRepository
 }
 
-func NewFlowRuntime(store domain.FlowRuntimeStore, flows domain.FlowRepository, sender domain.FlowSender, http domain.FlowHTTPClient, contacts domain.ContactUseCase, welcome AutoReplyUseCase) domain.FlowRuntimeUseCase {
-	return &flowRuntime{store, flows, sender, http, contacts, welcome}
+func NewFlowRuntime(store domain.FlowRuntimeStore, flows domain.FlowRepository, sender domain.FlowSender, http domain.FlowHTTPClient, contacts domain.ContactUseCase, welcome AutoReplyUseCase, schedules domain.ScheduleRepository) domain.FlowRuntimeUseCase {
+	return &flowRuntime{store, flows, sender, http, contacts, welcome, schedules}
 }
 
 func IncomingKey(e domain.FlowIncoming) string {
@@ -218,6 +219,23 @@ func selectOption(f *domain.Flow, s *domain.FlowSession, text, optionID string) 
 }
 
 func (uc *flowRuntime) process(ctx context.Context, e domain.FlowIncoming) error {
+	schedule, err := uc.schedules.Get(ctx)
+	if err != nil {
+		return err
+	}
+	if !schedule.Enabled || !schedule.IsConfigured() || !schedule.AutoReplyEnabled {
+		return uc.store.Complete(ctx, e.ID, false)
+	}
+	if !schedule.IsOpen(e.Timestamp) {
+		contact, err := uc.contacts.GetByPhone(ctx, e.Phone)
+		if err != nil {
+			return err
+		}
+		if err := uc.welcome.ProcessWelcomeMessage(ctx, contact); err != nil {
+			return err
+		}
+		return uc.store.Complete(ctx, e.ID, false)
+	}
 	s, err := uc.store.Session(ctx, e)
 	if err != nil {
 		return err

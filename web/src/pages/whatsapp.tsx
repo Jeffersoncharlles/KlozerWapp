@@ -2,12 +2,14 @@ import { useLoaderData, type ActionFunctionArgs } from 'react-router'
 import { z } from 'zod'
 
 import { WhatsAppContainer } from '../features/whatsapp/components/whatsapp-container'
+import { scheduleSchema } from '../features/whatsapp/domain/schedule'
 import {
   connectWhatsApp,
   disconnectWhatsApp,
   loadWhatsAppConnection,
   logoutWhatsApp,
   saveWhatsAppConfiguration,
+  saveSchedule,
 } from '../features/whatsapp/services/whatsapp-service'
 import {
   whatsappMutationSchema,
@@ -22,6 +24,8 @@ export async function action({ request }: ActionFunctionArgs): Promise<WhatsAppA
     const mutation = whatsappMutationSchema.parse(await request.json())
     if (mutation.intent === 'save-configuration')
       await saveWhatsAppConfiguration(mutation.configuration, request.signal)
+    else if (mutation.intent === 'save-schedule')
+      await saveSchedule(scheduleSchema.parse(mutation.schedule), request.signal)
     else if (mutation.intent === 'connect') await connectWhatsApp(request.signal)
     else if (mutation.intent === 'disconnect') await disconnectWhatsApp(request.signal)
     else await logoutWhatsApp(request.signal)

@@ -12,8 +12,8 @@ type User struct {
 	ID           string    `json:"id" gorm:"type:text;primaryKey"`
 	Name         string    `json:"name" gorm:"not null"`
 	Email        string    `json:"email" gorm:"uniqueIndex;not null"`
-	PasswordHash string    `json:"-" gorm:"not null"`           // "-" oculta no JSON de saída
-	Role         string    `json:"role" gorm:"default:'AGENT'"` // ADMIN ou AGENT
+	PasswordHash string    `json:"-" gorm:"not null"`               // "-" oculta no JSON de saída
+	Role         string    `json:"role" gorm:"default:'ATTENDANT'"` // ADMIN ou ATTENDANT
 	IsActive     bool      `json:"is_active" gorm:"default:true"`
 	CreatedAt    time.Time `json:"created_at" gorm:"autoCreateTime"`
 	UpdatedAt    time.Time `json:"updated_at" gorm:"autoUpdateTime"`
@@ -32,6 +32,7 @@ type UserRepository interface {
 	GetByEmail(ctx context.Context, email string) (*User, error)
 	List(ctx context.Context) ([]User, error)
 	CountActiveUsers(ctx context.Context) (int64, error)
+	CountActiveAdmins(ctx context.Context) (int64, error)
 	UpdateStatus(ctx context.Context, id string, isActive bool) error // <-- ADICIONADO
 	Update(ctx context.Context, user *User) error                     // <-- NOVO
 }
@@ -45,5 +46,6 @@ type UserUseCase interface {
 	List(ctx context.Context) ([]User, error)
 	GetByID(ctx context.Context, id string) (*User, error) // <-- ADICIONADO
 	Deactivate(ctx context.Context, id string) error       // <-- ADICIONADO
-	Update(ctx context.Context, updaterRole, targetUserID, name, email, password string) (*User, error)
+	Activate(ctx context.Context, id string) error
+	Update(ctx context.Context, updaterRole, targetUserID, name, email, password, role string) (*User, error)
 }

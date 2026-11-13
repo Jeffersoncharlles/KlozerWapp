@@ -95,6 +95,13 @@ const router = createBrowserRouter([
         lazy: async () => ({ Component: (await import('../pages/campaigns')).Campaigns }),
       },
       {
+        path: 'tags',
+        lazy: async () => {
+          const module = await import('../pages/tags')
+          return { Component: module.TagsPage, loader: module.loader, action: module.action }
+        },
+      },
+      {
         path: 'reports',
         lazy: async () => {
           const module = await import('../pages/reports')
@@ -118,8 +125,14 @@ const router = createBrowserRouter([
           }
         },
       },
+      {
+        path: 'users',
+        lazy: async () => {
+          const module = await import('../pages/users')
+          return { Component: module.Users, loader: module.loader, action: module.action }
+        },
+      },
       ...[
-        ['contacts', 'Contatos'],
         ['queues', 'Filas'],
         ['quick-replies', 'Respostas rápidas'],
         ['calls', 'Chamadas'],
@@ -130,6 +143,13 @@ const router = createBrowserRouter([
           Component: () => <FeaturePlaceholder title={title} />,
         }),
       })),
+      {
+        path: 'contacts',
+        lazy: async () => {
+          const module = await import('../pages/contacts')
+          return { Component: module.Contacts, loader: module.loader, action: module.action }
+        },
+      },
       {
         path: 'docs',
         lazy: async () => ({ Component: (await import('../pages/docs')).Docs }),

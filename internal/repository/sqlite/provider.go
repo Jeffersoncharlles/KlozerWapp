@@ -78,6 +78,7 @@ func NewGormProvider(cfg *config.Config) (repository.GormProvider, func(), error
 		&flowInbox{},
 		&flowOutbox{},
 		&whatsappConfigurationRecord{},
+		&scheduleRecord{},
 		&domain.Queue{},
 		&domain.Campaign{},
 		&domain.CallRecord{},

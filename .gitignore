@@ -5,9 +5,11 @@
 *.pem
 *.key
 .txt
+
+campanha.png
 docs/
 perfomace.md
-
+fila-transmisao.png
 # Operating system
 .DS_Store
 Thumbs.db

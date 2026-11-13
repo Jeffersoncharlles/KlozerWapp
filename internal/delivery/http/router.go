@@ -24,6 +24,7 @@ type RouterHandlers struct {
 	TagKanbanRule         *handler.TagKanbanRuleHandler
 	Session               *handler.SessionHandler
 	WhatsAppConfiguration *handler.WhatsAppConfigurationHandler
+	Schedule              *handler.ScheduleHandler
 	Flow                  *handler.FlowHandler
 	Queue                 *handler.QueueHandler
 	QueueAssignment       *handler.QueueAssignmentHandler
@@ -31,6 +32,8 @@ type RouterHandlers struct {
 	Campaign              *handler.CampaignHandler
 	Call                  *handler.CallHandler
 	Docs                  *handler.DocsHandler
+	User                  *handler.UserHandler
+	Contact               *handler.ContactHandler
 }
 
 // Note que agora injetamos o tokenAuth (*jwtauth.JWTAuth) gerado pelo Wire
@@ -84,6 +87,7 @@ func NewRouter(h RouterHandlers, tokenAuth *jwtauth.JWTAuth) http.Handler {
 			h.Report.RegisterRoutes(r)   // /v1/api/reports/*
 			h.Campaign.RegisterRoutes(r) // /v1/api/campaigns/*
 			h.Call.RegisterRoutes(r)     // /v1/api/calls/*
+			h.Contact.RegisterRoutes(r)  // /v1/api/contacts/*
 		})
 
 		// 2.3 Rotas Restritas (Apenas ADMIN)
@@ -95,6 +99,8 @@ func NewRouter(h RouterHandlers, tokenAuth *jwtauth.JWTAuth) http.Handler {
 			// Ex: Somente o dono/admin da clínica/loja pode ler o QR Code ou derrubar a sessão
 			h.Session.RegisterRoutes(r)               // /v1/api/sessions/*
 			h.WhatsAppConfiguration.RegisterRoutes(r) // /v1/api/sessions/configuration
+			h.Schedule.RegisterRoutes(r)              // /v1/api/schedule
+			h.User.RegisterRoutes(r)                  // /v1/api/users/*
 		})
 	})
 

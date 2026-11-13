@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"strings"
 
 	"github.com/Jeffersoncharlles/KlozerWapp/internal/domain"
 	"golang.org/x/crypto/bcrypt"
@@ -13,11 +14,16 @@ type userUseCase struct {
 	repo domain.UserRepository
 }
 
+var validUserRoles = map[string]bool{"ADMIN": true, "ATTENDANT": true}
+
 func NewUserUseCase(r domain.UserRepository) domain.UserUseCase {
 	return &userUseCase{repo: r}
 }
 
 func (uc *userUseCase) Create(ctx context.Context, name, email, password, role string) (*domain.User, error) {
+	name = strings.TrimSpace(name)
+	email = strings.ToLower(strings.TrimSpace(email))
+	role = strings.ToUpper(strings.TrimSpace(role))
 	// 1. Validação básica de integridade
 	if name == "" || email == "" || password == "" {
 		return nil, errors.New("nome, e-mail e senha são campos obrigatórios")
@@ -28,7 +34,10 @@ func (uc *userUseCase) Create(ctx context.Context, name, email, password, role s
 	}
 
 	if role == "" {
-		role = "ATTENDANT" // Define um papel padrão de menor privilégio
+		role = "ATTENDANT"
+	}
+	if !validUserRoles[role] {
+		return nil, errors.New("papel inválido: use ADMIN ou ATTENDANT")
 	}
 
 	// 2. REGRA DE NEGÓCIO: Trava de 3 usuários para a versão Community
@@ -78,11 +87,45 @@ func (uc *userUseCase) Deactivate(ctx context.Context, id string) error {
 	if id == "" {
 		return errors.New("id do usuário é obrigatório")
 	}
+	user, err := uc.repo.GetByID(ctx, id)
+	if err != nil {
+		return err
+	}
+	if user.Role == "ADMIN" && user.IsActive {
+		count, err := uc.repo.CountActiveAdmins(ctx)
+		if err != nil {
+			return err
+		}
+		if count <= 1 {
+			return errors.New("não é possível desativar o último administrador ativo")
+		}
+	}
 	return uc.repo.UpdateStatus(ctx, id, false)
 }
 
+func (uc *userUseCase) Activate(ctx context.Context, id string) error {
+	if id == "" {
+		return errors.New("id do usuário é obrigatório")
+	}
+	user, err := uc.repo.GetByID(ctx, id)
+	if err != nil {
+		return err
+	}
+	if user.IsActive {
+		return nil
+	}
+	count, err := uc.repo.CountActiveUsers(ctx)
+	if err != nil {
+		return err
+	}
+	if count >= 3 {
+		return errors.New("limite de 3 usuários ativos atingido na versão Community")
+	}
+	return uc.repo.UpdateStatus(ctx, id, true)
+}
+
 // Update atualiza os dados do usuário. Se o e-mail for alterado, exige privilégios de ADMIN.
-func (uc *userUseCase) Update(ctx context.Context, updaterRole, targetUserID, name, email, password string) (*domain.User, error) {
+func (uc *userUseCase) Update(ctx context.Context, updaterRole, targetUserID, name, email, password, role string) (*domain.User, error) {
 	// 1. Busca o usuário que será alterado
 	user, err := uc.repo.GetByID(ctx, targetUserID)
 	if err != nil {
@@ -90,11 +133,28 @@ func (uc *userUseCase) Update(ctx context.Context, updaterRole, targetUserID, na
 	}
 
 	// 2. REGRA DE NEGÓCIO: Alteração de e-mail
+	email = strings.ToLower(strings.TrimSpace(email))
+	role = strings.ToUpper(strings.TrimSpace(role))
 	if email != "" && email != user.Email {
 		if updaterRole != "ADMIN" {
 			return nil, errors.New("acesso negado: apenas administradores podem alterar endereços de e-mail")
 		}
 		user.Email = email
+	}
+	if role != "" {
+		if !validUserRoles[role] {
+			return nil, errors.New("papel inválido: use ADMIN ou ATTENDANT")
+		}
+		if user.Role == "ADMIN" && role != "ADMIN" && user.IsActive {
+			count, err := uc.repo.CountActiveAdmins(ctx)
+			if err != nil {
+				return nil, err
+			}
+			if count <= 1 {
+				return nil, errors.New("não é possível remover o último administrador ativo")
+			}
+		}
+		user.Role = role
 	}
 
 	// 3. Atualiza Nome (Livre para o próprio usuário ou admin)
