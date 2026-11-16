@@ -34,9 +34,37 @@ func (uc *kanbanUseCase) MoveCard(ctx context.Context, cardID, targetColumnID st
 	return uc.repository.MoveCard(ctx, cardID, targetColumnID, newPosition)
 }
 
+func (uc *kanbanUseCase) MoveCardAs(ctx context.Context, cardID, targetColumnID string, newPosition int, actorID, actorRole string) (*domain.KanbanCard, error) {
+	if actorID == "" || actorRole == "" {
+		return nil, domain.ErrInvalidActor
+	}
+	return uc.repository.MoveCardAs(ctx, cardID, targetColumnID, newPosition, actorID, actorRole)
+}
+
 func (uc *kanbanUseCase) TakeAttendance(ctx context.Context, cardID, userID string) error {
 	// Chamado quando o Atendente clica em "Assumir Conversa"
 	return uc.repository.AssignUserToCard(ctx, cardID, userID)
+}
+
+func (uc *kanbanUseCase) Take(ctx context.Context, cardID, actorID, actorRole string) (*domain.KanbanCard, error) {
+	if actorID == "" || actorRole == "" {
+		return nil, domain.ErrInvalidActor
+	}
+	return uc.repository.TakeAttendance(ctx, cardID, actorID, actorRole)
+}
+
+func (uc *kanbanUseCase) Finish(ctx context.Context, cardID, actorID, actorRole string) (*domain.KanbanCard, error) {
+	if actorID == "" || actorRole == "" {
+		return nil, domain.ErrInvalidActor
+	}
+	return uc.repository.FinishAttendance(ctx, cardID, actorID, actorRole)
+}
+
+func (uc *kanbanUseCase) ListEvents(ctx context.Context, cardID string, limit, offset int) ([]domain.AttendanceEvent, error) {
+	if cardID == "" {
+		return nil, domain.ErrCardNotFound
+	}
+	return uc.repository.ListAttendanceEvents(ctx, cardID, limit, offset)
 }
 
 func (uc *kanbanUseCase) AssignQueue(ctx context.Context, cardID, queueID, origin string) error {
@@ -68,6 +96,7 @@ func (uc *kanbanUseCase) EnsureContactHasCard(ctx context.Context, contactID str
 		ContactID: contactID,
 		ColumnID:  firstColumn.ID,
 		Position:  0, // Joga pro topo da lista
+		IsActive:  true,
 	}
 
 	err = uc.repository.CreateCard(ctx, newCard)

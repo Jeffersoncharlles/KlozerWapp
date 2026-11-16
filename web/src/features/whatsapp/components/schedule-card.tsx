@@ -1,3 +1,5 @@
+import { Link } from 'react-router'
+
 import { Button } from '../../../components/ui/button'
 import {
   Card,
@@ -6,6 +8,7 @@ import {
   CardHeader,
   CardTitle,
 } from '../../../components/ui/card'
+import type { ScheduleException } from '../domain/schedule'
 import { useScheduleConfiguration } from '../hooks/use-schedule-configuration'
 import type { WhatsAppLoaderData } from '../types'
 
@@ -20,11 +23,15 @@ const weekdays = [
 ] as const
 
 export function ScheduleCard({ data }: { data: WhatsAppLoaderData }) {
-  const { schedule, setSchedule, dirty, error, isSubmitting, save } = useScheduleConfiguration(data)
+  const { schedule, setSchedule, dirty, error, validationError, isSubmitting, save } =
+    useScheduleConfiguration(data)
   const configured =
     schedule.timezone !== '' &&
     (schedule.allDay || (schedule.days.length > 0 && schedule.intervals.length > 0))
   const intervals = schedule.intervals.length ? schedule.intervals : [{ start: '', end: '' }]
+  const activeFlow = data.configuration?.flowId
+    ? data.automations?.find((flow) => flow.id === data.configuration?.flowId)
+    : undefined
 
   function updateInterval(index: number, field: 'start' | 'end', value: string) {
     const next = intervals.map((interval, currentIndex) =>
@@ -42,12 +49,12 @@ export function ScheduleCard({ data }: { data: WhatsAppLoaderData }) {
         </CardDescription>
       </CardHeader>
       <CardContent className="space-y-4">
-        {error ? (
+        {error || validationError ? (
           <p
             role="alert"
             className="rounded border border-destructive/30 bg-destructive/10 p-3 text-sm text-destructive"
           >
-            {error}
+            {error ?? validationError}
           </p>
         ) : null}
         <div className="grid gap-4 sm:grid-cols-2">
@@ -78,6 +85,25 @@ export function ScheduleCard({ data }: { data: WhatsAppLoaderData }) {
             }
           />
           Permitir respostas automáticas
+        </label>
+        <label className="block space-y-1.5 text-sm font-medium">
+          Política fora do horário
+          <select
+            className="h-9 w-full rounded-md border border-input bg-background px-3 text-sm"
+            value={schedule.outsideHoursPolicy}
+            onChange={(event) =>
+              setSchedule({
+                ...schedule,
+                outsideHoursPolicy: event.target.value as typeof schedule.outsideHoursPolicy,
+              })
+            }
+          >
+            <option value="send_and_close">Responder e encerrar</option>
+            <option value="keep_open">Manter atendimento aberto</option>
+            <option value="queue">Enviar para fila</option>
+            <option value="automation">Executar automação</option>
+            <option value="inform_only">Somente informar</option>
+          </select>
         </label>
         <label className="flex items-center gap-2 text-sm">
           <input
@@ -169,6 +195,88 @@ export function ScheduleCard({ data }: { data: WhatsAppLoaderData }) {
             onChange={(event) => setSchedule({ ...schedule, welcomeMessage: event.target.value })}
           />
         </label>
+        <div className="space-y-2 rounded-lg border border-border/70 p-3">
+          <div className="flex flex-wrap items-center justify-between gap-2">
+            <div>
+              <p className="text-sm font-medium">Saudação manual</p>
+              <p className="text-xs text-muted-foreground">
+                {activeFlow
+                  ? `Controlada pelo flow “${activeFlow.name}”.`
+                  : 'Usada quando não há flow ativo.'}
+              </p>
+            </div>
+            {activeFlow ? (
+              <Link
+                className="text-sm text-primary underline-offset-4 hover:underline"
+                to="/dashboard/automations"
+              >
+                Abrir automações
+              </Link>
+            ) : null}
+          </div>
+          <label className="flex items-center gap-2 text-sm">
+            <input
+              type="checkbox"
+              checked={schedule.manualWelcomeEnabled}
+              disabled={Boolean(activeFlow)}
+              onChange={(event) =>
+                setSchedule({ ...schedule, manualWelcomeEnabled: event.target.checked })
+              }
+            />
+            Ativar saudação manual
+          </label>
+          <textarea
+            aria-label="Mensagem de saudação manual"
+            className="min-h-20 w-full rounded-md border border-input bg-background p-3 text-sm"
+            value={schedule.manualWelcomeMessage}
+            onChange={(event) =>
+              setSchedule({ ...schedule, manualWelcomeMessage: event.target.value })
+            }
+          />
+        </div>
+        <div className="space-y-3 rounded-lg border border-border/70 p-3">
+          <div>
+            <p className="text-sm font-medium">Feriados e exceções</p>
+            <p className="text-xs text-muted-foreground">
+              Datas fechadas ou com horário especial substituem a grade semanal.
+            </p>
+          </div>
+          {schedule.exceptions.map((exception, index) => (
+            <ExceptionEditor
+              key={`${exception.date}-${index}`}
+              exception={exception}
+              onChange={(next) =>
+                setSchedule({
+                  ...schedule,
+                  exceptions: schedule.exceptions.map((item, itemIndex) =>
+                    itemIndex === index ? next : item,
+                  ),
+                })
+              }
+              onRemove={() =>
+                setSchedule({
+                  ...schedule,
+                  exceptions: schedule.exceptions.filter((_, itemIndex) => itemIndex !== index),
+                })
+              }
+            />
+          ))}
+          <Button
+            type="button"
+            variant="outline"
+            onClick={() =>
+              setSchedule({
+                ...schedule,
+                exceptions: [
+                  ...schedule.exceptions,
+                  { date: '', open: false, allDay: true, intervals: [] },
+                ],
+              })
+            }
+          >
+            Adicionar exceção
+          </Button>
+        </div>
         <label className="space-y-1.5 text-sm font-medium">
           Mensagem fora do horário
           <textarea
@@ -191,5 +299,79 @@ export function ScheduleCard({ data }: { data: WhatsAppLoaderData }) {
         </div>
       </CardContent>
     </Card>
+  )
+}
+
+function ExceptionEditor({
+  exception,
+  onChange,
+  onRemove,
+}: {
+  exception: ScheduleException
+  onChange: (value: ScheduleException) => void
+  onRemove: () => void
+}) {
+  return (
+    <div className="grid gap-3 rounded-md bg-muted/30 p-3 sm:grid-cols-[1fr_auto_auto_auto] sm:items-end">
+      <label className="space-y-1.5 text-sm font-medium">
+        Data
+        <input
+          type="date"
+          className="h-9 w-full rounded-md border border-input bg-background px-3 text-sm"
+          value={exception.date}
+          onChange={(event) => onChange({ ...exception, date: event.target.value })}
+        />
+      </label>
+      <label className="flex items-center gap-2 text-sm">
+        <input
+          type="checkbox"
+          checked={exception.open}
+          onChange={(event) => onChange({ ...exception, open: event.target.checked })}
+        />
+        Aberto
+      </label>
+      <label className="flex items-center gap-2 text-sm">
+        <input
+          type="checkbox"
+          checked={exception.allDay}
+          disabled={!exception.open}
+          onChange={(event) => onChange({ ...exception, allDay: event.target.checked })}
+        />
+        24 horas
+      </label>
+      <Button type="button" variant="ghost" onClick={onRemove}>
+        Remover
+      </Button>
+      {exception.open && !exception.allDay ? (
+        <div className="grid gap-3 sm:col-span-4 sm:grid-cols-2">
+          <input
+            type="time"
+            aria-label="Início da exceção"
+            className="h-9 rounded-md border border-input bg-background px-3 text-sm"
+            value={exception.intervals[0]?.start ?? ''}
+            onChange={(event) =>
+              onChange({
+                ...exception,
+                intervals: [{ start: event.target.value, end: exception.intervals[0]?.end ?? '' }],
+              })
+            }
+          />
+          <input
+            type="time"
+            aria-label="Fim da exceção"
+            className="h-9 rounded-md border border-input bg-background px-3 text-sm"
+            value={exception.intervals[0]?.end ?? ''}
+            onChange={(event) =>
+              onChange({
+                ...exception,
+                intervals: [
+                  { start: exception.intervals[0]?.start ?? '', end: event.target.value },
+                ],
+              })
+            }
+          />
+        </div>
+      ) : null}
+    </div>
   )
 }

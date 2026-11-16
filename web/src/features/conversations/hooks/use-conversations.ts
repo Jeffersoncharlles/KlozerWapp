@@ -1,6 +1,9 @@
+import { useQueryClient } from '@tanstack/react-query'
 import { useCallback, useState } from 'react'
 import { useLoaderData } from 'react-router'
 
+import { useKanbanQuery } from '../../kanban/hooks/use-kanban-query'
+import { finishConversation, takeConversation } from '../services/conversation-service'
 import type { ConversationLoaderData } from '../types'
 import { useConversationActions } from './use-conversation-actions'
 import { useConversationEvents } from './use-conversation-events'
@@ -12,11 +15,14 @@ function errorMessage(reason: unknown, fallback: string) {
 
 export function useConversations() {
   const initialData = useLoaderData() as ConversationLoaderData
+  const queryClient = useQueryClient()
   const [selectedID, setSelectedID] = useState(initialData.conversations[0]?.contact.id ?? '')
   const [search, setSearch] = useState('')
   const [draft, setDraft] = useState('')
   const [tagID, setTagID] = useState('')
+  const [attendanceBusy, setAttendanceBusy] = useState(false)
   const queries = useConversationQueries(initialData, selectedID)
+  const kanban = useKanbanQuery([])
   const events = useConversationEvents()
   const clearDraft = useCallback(() => setDraft(''), [])
   const clearTag = useCallback(() => setTagID(''), [])
@@ -53,6 +59,40 @@ export function useConversations() {
       actions.submit({ intent: 'remove-tag', contactID: selectedID, tagID: tagIDToRemove })
   }
 
+  function moveStatus(columnID: string) {
+    if (selected?.card && !actions.busy)
+      actions.submit({ intent: 'move-status', cardID: selected.card.id, columnID })
+  }
+
+  async function take() {
+    if (!selected?.card || attendanceBusy) return
+    setAttendanceBusy(true)
+    try {
+      await takeConversation(selected.card.id)
+      await Promise.all([
+        queries.conversations.refetch(),
+        queryClient.invalidateQueries({ queryKey: ['kanban', 'board'] }),
+      ])
+    } finally {
+      setAttendanceBusy(false)
+    }
+  }
+
+  async function finish() {
+    if (!selected?.card || attendanceBusy) return
+    if (!window.confirm('Finalizar este atendimento?')) return
+    setAttendanceBusy(true)
+    try {
+      await finishConversation(selected.card.id)
+      await Promise.all([
+        queries.conversations.refetch(),
+        queryClient.invalidateQueries({ queryKey: ['kanban', 'board'] }),
+      ])
+    } finally {
+      setAttendanceBusy(false)
+    }
+  }
+
   return {
     conversations,
     visible,
@@ -80,5 +120,10 @@ export function useConversations() {
     send,
     addTag,
     removeTag,
+    columns: kanban.data ?? [],
+    moveStatus,
+    take,
+    finish,
+    attendanceBusy,
   }
 }

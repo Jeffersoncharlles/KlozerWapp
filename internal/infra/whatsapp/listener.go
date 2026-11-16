@@ -5,8 +5,10 @@ import (
 	"encoding/json"
 	"log/slog"
 	"sync"
+	"time"
 
 	"github.com/Jeffersoncharlles/KlozerWapp/internal/domain"
+	waE2E "go.mau.fi/whatsmeow/proto/waE2E"
 	"go.mau.fi/whatsmeow/types/events"
 )
 
@@ -47,6 +49,9 @@ func (l *WhatsAppListener) eventHandler(evt interface{}) bool {
 	l.mu.Unlock()
 	defer l.wg.Done()
 	message := v.Message
+	if message == nil {
+		return true
+	}
 	content := message.GetConversation()
 	if content == "" {
 		content = message.GetExtendedTextMessage().GetText()
@@ -66,10 +71,32 @@ func (l *WhatsAppListener) eventHandler(evt interface{}) bool {
 	if content == "" {
 		content = option
 	}
+	messageType := "text"
 	if content == "" {
-		content = "[Mídia Recebida]"
+		content, messageType = mediaContent(message)
+		if content == "" {
+			// Protocol/read-receipt events must not become fake chat messages.
+			return true
+		}
 	}
-	e := domain.FlowIncoming{ID: string(v.Info.ID), ConnectionID: client.Store.ID.String(), ChatID: v.Info.Chat.String(), Phone: v.Info.Sender.String(), Text: content, OptionID: option, Timestamp: v.Info.Timestamp}
+	avatarURL := ""
+	pictureCtx, cancel := context.WithTimeout(l.ctx, 3*time.Second)
+	if picture, err := client.GetProfilePictureInfo(pictureCtx, v.Info.Sender, nil); err == nil && picture != nil {
+		avatarURL = picture.URL
+	}
+	cancel()
+	e := domain.FlowIncoming{
+		ID:           string(v.Info.ID),
+		ConnectionID: client.Store.ID.String(),
+		ChatID:       v.Info.Chat.String(),
+		Phone:        v.Info.Sender.String(),
+		Name:         v.Info.PushName,
+		AvatarURL:    avatarURL,
+		Text:         content,
+		OptionID:     option,
+		MessageType:  messageType,
+		Timestamp:    v.Info.Timestamp,
+	}
 	// Persist before returning; no lossy in-memory queue between the protocol
 	// event and the durable inbox. The runtime worker performs network effects.
 	if err := l.chatUC.HandleIncomingMessage(l.ctx, e); err != nil {
@@ -77,4 +104,38 @@ func (l *WhatsAppListener) eventHandler(evt interface{}) bool {
 		return false
 	}
 	return true
+}
+
+func mediaContent(message *waE2E.Message) (string, string) {
+	if image := message.GetImageMessage(); image != nil {
+		if caption := image.GetCaption(); caption != "" {
+			return caption, "image"
+		}
+		return "Imagem recebida", "image"
+	}
+	if video := message.GetVideoMessage(); video != nil {
+		if caption := video.GetCaption(); caption != "" {
+			return caption, "video"
+		}
+		return "Vídeo recebido", "video"
+	}
+	if message.GetAudioMessage() != nil {
+		return "Áudio recebido", "audio"
+	}
+	if document := message.GetDocumentMessage(); document != nil {
+		if caption := document.GetCaption(); caption != "" {
+			return caption, "document"
+		}
+		return "Documento recebido", "document"
+	}
+	if message.GetStickerMessage() != nil {
+		return "Figurinha recebida", "sticker"
+	}
+	if contact := message.GetContactMessage(); contact != nil {
+		return contact.GetDisplayName(), "contact"
+	}
+	if message.GetLocationMessage() != nil {
+		return "Localização recebida", "location"
+	}
+	return "", ""
 }

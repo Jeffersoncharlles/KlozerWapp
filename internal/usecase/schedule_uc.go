@@ -31,6 +31,7 @@ func (uc *scheduleUseCase) Get(ctx context.Context) (*domain.Schedule, error) {
 func (uc *scheduleUseCase) Update(ctx context.Context, schedule domain.Schedule) (*domain.Schedule, error) {
 	schedule.Timezone = strings.TrimSpace(schedule.Timezone)
 	schedule.WelcomeMessage = strings.TrimSpace(schedule.WelcomeMessage)
+	schedule.ManualWelcomeMessage = strings.TrimSpace(schedule.ManualWelcomeMessage)
 	schedule.ClosedMessage = strings.TrimSpace(schedule.ClosedMessage)
 	normalizeSchedule(&schedule)
 	if err := schedule.Validate(); err != nil {
@@ -48,5 +49,20 @@ func normalizeSchedule(schedule *domain.Schedule) {
 	}
 	if schedule.Intervals == nil {
 		schedule.Intervals = []domain.ScheduleInterval{}
+	}
+	if schedule.Exceptions == nil {
+		schedule.Exceptions = []domain.ScheduleException{}
+	}
+	if schedule.ManualWelcomeMessage == "" {
+		schedule.ManualWelcomeMessage = schedule.WelcomeMessage
+	}
+	if schedule.WelcomeMessage == "" {
+		schedule.WelcomeMessage = schedule.ManualWelcomeMessage
+	}
+	if !schedule.ManualWelcomeEnabled && schedule.ManualWelcomeMessage != "" {
+		schedule.ManualWelcomeEnabled = true
+	}
+	if schedule.OutsideHoursPolicy == "" {
+		schedule.OutsideHoursPolicy = "send_and_close"
 	}
 }

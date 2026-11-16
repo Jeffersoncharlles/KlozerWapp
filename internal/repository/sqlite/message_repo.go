@@ -47,7 +47,7 @@ func (r *messageRepo) ListByContactID(ctx context.Context, contactID string, lim
 	}
 
 	var messages []domain.Message
-	err = db.Where("contact_id = ?", contactID).
+	err = db.Where("contact_id = ? AND content <> ?", contactID, "[Mídia Recebida]").
 		Order("timestamp DESC").
 		Limit(limit).
 		Offset(offset).
@@ -66,7 +66,7 @@ func (r *messageRepo) LatestByContactID(ctx context.Context, contactID string) (
 	}
 
 	var message domain.Message
-	if err := db.Where("contact_id = ?", contactID).Order("timestamp DESC, created_at DESC").First(&message).Error; err != nil {
+	if err := db.Where("contact_id = ? AND content <> ?", contactID, "[Mídia Recebida]").Order("timestamp DESC, created_at DESC").First(&message).Error; err != nil {
 		if errors.Is(err, gorm.ErrRecordNotFound) {
 			return nil, nil
 		}

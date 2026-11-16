@@ -6,6 +6,7 @@ import {
   addTagToContact,
   loadConversations,
   loadTags,
+  moveConversationCard,
   removeTagFromContact,
   sendConversationMessage,
 } from '../features/conversations/services/conversation-service'
@@ -42,6 +43,10 @@ export async function action({ request }: ActionFunctionArgs): Promise<Conversat
         tagEvent: { contactID: mutation.contactID, tagID: mutation.tagID, added: true },
         message: 'Tag adicionada',
       }
+    }
+    if (mutation.intent === 'move-status') {
+      await moveConversationCard({ id: mutation.cardID }, mutation.columnID, request.signal)
+      return { statusChanged: true, message: 'Status atualizado' }
     }
     await removeTagFromContact(mutation.contactID, mutation.tagID, request.signal)
     return {

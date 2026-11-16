@@ -23,7 +23,14 @@ export function ConversationThread({ messages }: { messages: ConversationMessage
             className="group flex max-w-[80%] flex-col gap-1 self-start items-start group-data-[from-me]:self-end group-data-[from-me]:items-end"
           >
             <div className="rounded-2xl rounded-tl-sm bg-muted px-4 py-3 text-sm group-data-[from-me]:rounded-tr-sm group-data-[from-me]:rounded-tl-none group-data-[from-me]:bg-emerald-500 group-data-[from-me]:text-emerald-950">
-              {message.content}
+              {message.type === 'image' ? 'Imagem recebida' : null}
+              {message.type === 'video' ? 'Vídeo recebido' : null}
+              {message.type === 'audio' ? 'Áudio recebido' : null}
+              {message.type === 'document' ? 'Documento recebido' : null}
+              {message.type === 'sticker' ? 'Figurinha recebida' : null}
+              {!['image', 'video', 'audio', 'document', 'sticker'].includes(message.type)
+                ? message.content
+                : null}
             </div>
             <span className="flex items-center gap-1 text-[10px] text-muted-foreground">
               {message.is_from_me ? <CheckCheck className="size-3 text-emerald-400" /> : null}

@@ -31,7 +31,7 @@ func (uc *autoReplyUseCase) ProcessWelcomeMessage(ctx context.Context, contact *
 	if err != nil {
 		return err
 	}
-	if !schedule.Enabled || !schedule.IsConfigured() || !schedule.AutoReplyEnabled {
+	if !schedule.Enabled || !schedule.IsConfigured() {
 		return nil
 	}
 
@@ -52,6 +52,9 @@ func (uc *autoReplyUseCase) ProcessWelcomeMessage(ctx context.Context, contact *
 
 	// 2. REGRA DE HORÁRIO DE ATENDIMENTO:
 	if !schedule.IsOpen(time.Now()) {
+		if schedule.OutsideHoursPolicy != "" && schedule.OutsideHoursPolicy != "send_and_close" && schedule.OutsideHoursPolicy != "send_message_and_close" && schedule.OutsideHoursPolicy != "inform_only" {
+			return nil
+		}
 		if schedule.ClosedMessage == "" {
 			return nil
 		}
@@ -59,10 +62,18 @@ func (uc *autoReplyUseCase) ProcessWelcomeMessage(ctx context.Context, contact *
 	}
 
 	// 3. REGRA DE BOAS-VINDAS (Dentro do horário e após 24h sem falar):
-	if schedule.WelcomeMessage == "" {
+	manualWelcomeEnabled := schedule.ManualWelcomeEnabled || (schedule.ManualWelcomeMessage == "" && schedule.WelcomeMessage != "")
+	if !manualWelcomeEnabled {
 		return nil
 	}
-	return uc.sendWelcome(ctx, contact, schedule.WelcomeMessage)
+	welcomeMessage := schedule.ManualWelcomeMessage
+	if welcomeMessage == "" {
+		welcomeMessage = schedule.WelcomeMessage
+	}
+	if welcomeMessage == "" {
+		return nil
+	}
+	return uc.sendWelcome(ctx, contact, welcomeMessage)
 }
 
 func (uc *autoReplyUseCase) sendWelcome(ctx context.Context, contact *domain.Contact, text string) error {

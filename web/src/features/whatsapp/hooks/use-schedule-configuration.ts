@@ -1,7 +1,7 @@
 import { useState } from 'react'
 import { useFetcher } from 'react-router'
 
-import { emptySchedule, type Schedule } from '../domain/schedule'
+import { emptySchedule, scheduleSchema, type Schedule } from '../domain/schedule'
 import type { WhatsAppActionResult, WhatsAppLoaderData } from '../types'
 
 export function useScheduleConfiguration(data: WhatsAppLoaderData) {
@@ -9,9 +9,10 @@ export function useScheduleConfiguration(data: WhatsAppLoaderData) {
   const initial = data.schedule ?? emptySchedule
   const [schedule, setSchedule] = useState(initial)
   const dirty = JSON.stringify(schedule) !== JSON.stringify(initial)
+  const validation = scheduleSchema.safeParse(schedule)
 
   function save() {
-    if (!dirty || fetcher.state !== 'idle') return
+    if (!dirty || fetcher.state !== 'idle' || !validation.success) return
     void fetcher.submit(
       { intent: 'save-schedule', schedule },
       { method: 'post', encType: 'application/json' },
@@ -23,6 +24,7 @@ export function useScheduleConfiguration(data: WhatsAppLoaderData) {
     setSchedule: (value: Schedule) => setSchedule(value),
     dirty,
     error: fetcher.data?.error,
+    validationError: validation.success ? undefined : validation.error.issues[0]?.message,
     isSubmitting: fetcher.state !== 'idle',
     save,
   }

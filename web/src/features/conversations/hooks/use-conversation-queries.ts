@@ -24,7 +24,8 @@ export function useConversationQueries(initialData: ConversationLoaderData, sele
     queryKey: conversationQueryKeys.tags,
     queryFn: ({ signal }) => loadTags(signal),
     initialData: initialData.tags,
-    staleTime: 5 * 60_000,
+    // Tags can be created in the dedicated Tags screen while this route stays mounted.
+    staleTime: 0,
   })
   const messages = useQuery({
     queryKey: conversationQueryKeys.messages(selectedID),
