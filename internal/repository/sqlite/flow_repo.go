@@ -102,6 +102,29 @@ func (r *flowRepository) GetByID(ctx context.Context, id string) (*domain.Flow, 
 	err = json.Unmarshal([]byte(row.Document), &f)
 	return &f, err
 }
+
+func (r *flowRepository) GetPublished(ctx context.Context, id string) (*domain.Flow, error) {
+	db, err := r.provider.GetDB(ctx)
+	if err != nil {
+		return nil, err
+	}
+	var flow conversationFlow
+	if err := db.First(&flow, "id=? AND deleted=?", id, false).Error; err != nil {
+		if errors.Is(err, gorm.ErrRecordNotFound) {
+			return nil, domain.FlowNotFound()
+		}
+		return nil, err
+	}
+	var version flowVersion
+	if err := db.First(&version, "flow_id=? AND revision=?", id, flow.PublishedRevision).Error; err != nil {
+		return nil, err
+	}
+	var published domain.Flow
+	if err := json.Unmarshal([]byte(version.Document), &published); err != nil {
+		return nil, err
+	}
+	return &published, nil
+}
 func (r *flowRepository) List(ctx context.Context, kind string) ([]domain.FlowSummary, error) {
 	db, err := r.provider.GetDB(ctx)
 	if err != nil {

@@ -18,3 +18,8 @@ func normalizeWhatsAppPhone(phone string) string {
 func isGeneratedContactName(name string) bool {
 	return strings.HasPrefix(strings.TrimSpace(name), "Cliente ")
 }
+
+func isFallbackContactName(name, phone string) bool {
+	name = strings.TrimSpace(name)
+	return name == "" || isGeneratedContactName(name) || normalizeWhatsAppPhone(name) == normalizeWhatsAppPhone(phone)
+}

@@ -3,6 +3,7 @@ import { Archive, MoreHorizontal, UserRound } from 'lucide-react'
 import { Avatar, AvatarFallback, AvatarImage } from '../../../components/ui/avatar'
 import { Button } from '../../../components/ui/button'
 import { contactDisplayName, contactInitials } from '../../../core/shared/contact'
+import type { KanbanColumn } from '../../kanban/types'
 import type { Conversation, ConversationTag } from '../domain/conversation'
 
 type Props = {
@@ -12,6 +13,11 @@ type Props = {
   onTagIDChange: (value: string) => void
   onAddTag: () => void
   onRemoveTag: (tagID: string) => void
+  columns: KanbanColumn[]
+  onStatusChange: (columnID: string) => void
+  onTake: () => void
+  onFinish: () => void
+  attendanceBusy: boolean
 }
 
 export function ConversationHeader({
@@ -21,10 +27,19 @@ export function ConversationHeader({
   onTagIDChange,
   onAddTag,
   onRemoveTag,
+  columns,
+  onStatusChange,
+  onTake,
+  onFinish,
+  attendanceBusy,
 }: Props) {
   const selectedTags = conversation.contact.tags ?? []
+  const accentColor = selectedTags[0]?.color
   return (
-    <div className="flex flex-wrap items-center gap-3 border-b border-border/70 p-4">
+    <div
+      className="flex flex-wrap items-center gap-3 border-b border-border/70 p-4"
+      style={accentColor ? { borderBottomColor: accentColor } : undefined}
+    >
       <Avatar>
         {conversation.contact.avatar_url ? (
           <AvatarImage
@@ -77,6 +92,28 @@ export function ConversationHeader({
             </Button>
           ) : null}
         </div>
+        <div className="mt-2 flex flex-wrap items-center gap-2 text-xs">
+          <label className="flex items-center gap-2">
+            Status
+            <select
+              aria-label="Status da conversa"
+              className="h-7 rounded border border-border bg-background px-2"
+              value={conversation.card?.column_id ?? ''}
+              onChange={(event) => onStatusChange(event.target.value)}
+              disabled={!conversation.card || columns.length === 0}
+            >
+              <option value="">Sem card</option>
+              {columns.map((column) => (
+                <option key={column.id} value={column.id}>
+                  {column.name}
+                </option>
+              ))}
+            </select>
+          </label>
+          <span className="text-muted-foreground">
+            Responsável: {conversation.card?.assignee?.name ?? 'Não atribuído'}
+          </span>
+        </div>
       </div>
       <Button variant="ghost" size="icon-sm" aria-label="Dados do contato">
         <UserRound className="size-4" />
@@ -87,6 +124,35 @@ export function ConversationHeader({
       <Button variant="ghost" size="icon-sm" aria-label="Mais opções">
         <MoreHorizontal className="size-4" />
       </Button>
+      <div className="flex w-full flex-wrap gap-2 border-t border-border/50 pt-3">
+        <Button
+          type="button"
+          variant="outline"
+          size="sm"
+          disabled={!conversation.card || attendanceBusy}
+          onClick={onTake}
+        >
+          Assumir
+        </Button>
+        <Button
+          type="button"
+          variant="outline"
+          size="sm"
+          disabled={!conversation.card || attendanceBusy}
+          onClick={onFinish}
+        >
+          Finalizar
+        </Button>
+        <Button
+          type="button"
+          variant="ghost"
+          size="sm"
+          disabled
+          title="Endpoint ainda não existe no backend"
+        >
+          Logs de atendimento
+        </Button>
+      </div>
     </div>
   )
 }

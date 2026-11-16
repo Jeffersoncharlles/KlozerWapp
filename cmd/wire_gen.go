@@ -76,7 +76,7 @@ func InitializeApp(cfg *config.Config) (*App, func(), error) {
 	sessionHandler := handler.NewSessionHandler(whatsAppGateway, broker, flowUseCase)
 	whatsAppConfigurationRepository := sqlite.NewWhatsAppConfigurationRepository(gormProvider)
 	queueRepository := sqlite.NewQueueRepository(gormProvider)
-	whatsAppConfigurationUseCase := usecase.NewWhatsAppConfigurationUseCase(whatsAppConfigurationRepository, flowRepository, queueRepository)
+	whatsAppConfigurationUseCase := usecase.NewWhatsAppConfigurationUseCaseWithSchedule(whatsAppConfigurationRepository, scheduleRepository, flowRepository, queueRepository)
 	whatsAppConfigurationHandler := handler.NewWhatsAppConfigurationHandler(whatsAppConfigurationUseCase)
 	scheduleUseCase := usecase.NewScheduleUseCase(scheduleRepository)
 	scheduleHandler := handler.NewScheduleHandler(scheduleUseCase)
@@ -149,7 +149,7 @@ var InfraSSESet = wire.NewSet(sse.NewBroker, wire.Bind(new(domain.Broker), new(*
 
 var RepositorySet = wire.NewSet(sqlite.NewGormProvider, sqlite.ProvideSQLDB, sqlite.NewUserRepository, sqlite.NewKanbanRepository, sqlite.NewMessageRepository, sqlite.NewQuickReplyRepository, sqlite.NewTagRepository, sqlite.NewTagKanbanRuleRepository, sqlite.NewContactRepository, sqlite.NewFlowRepository, sqlite.NewFlowRuntimeStore, sqlite.NewWhatsAppConfigurationRepository, sqlite.NewScheduleRepository, sqlite.NewQueueRepository, sqlite.NewReportRepository, sqlite.NewCampaignRepository, sqlite.NewCallRepository)
 
-var UseCaseSet = wire.NewSet(usecase.NewAuthUseCase, usecase.NewUserUseCase, usecase.NewKanbanUseCase, usecase.NewChatUseCase, usecase.NewQuickReplyUseCase, usecase.NewAutoReplyUseCase, usecase.NewContactUseCase, usecase.NewTagUseCase, usecase.NewTagKanbanRuleUseCase, usecase.NewFlowUseCase, usecase.NewFlowRuntime, usecase.NewFlowSender, usecase.NewWhatsAppConfigurationUseCase, usecase.NewScheduleUseCase, usecase.NewQueueUseCase, usecase.NewReportUseCase, usecase.NewCampaignUseCase, usecase.NewCallUseCase)
+var UseCaseSet = wire.NewSet(usecase.NewAuthUseCase, usecase.NewUserUseCase, usecase.NewKanbanUseCase, usecase.NewChatUseCase, usecase.NewQuickReplyUseCase, usecase.NewAutoReplyUseCase, usecase.NewContactUseCase, usecase.NewTagUseCase, usecase.NewTagKanbanRuleUseCase, usecase.NewFlowUseCase, usecase.NewFlowRuntime, usecase.NewFlowSender, usecase.NewWhatsAppConfigurationUseCaseWithSchedule, usecase.NewScheduleUseCase, usecase.NewQueueUseCase, usecase.NewReportUseCase, usecase.NewCampaignUseCase, usecase.NewCallUseCase)
 
 var HandlerSet = wire.NewSet(handler.NewAuthHandler, handler.NewKanbanHandler, handler.NewMessageHandler, handler.NewConversationHandler, handler.NewQuickReplyHandler, handler.NewTagHandler, handler.NewTagKanbanRuleHandler, handler.NewSessionHandler, handler.NewWhatsAppConfigurationHandler, handler.NewScheduleHandler, handler.NewUserHandler, handler.NewContactHandler, handler.NewFlowHandler, handler.NewQueueHandler, handler.NewQueueAssignmentHandler, handler.NewReportHandler, handler.NewCampaignHandler, handler.NewCallHandler, handler.NewDocsHandler, wire.Struct(new(http.RouterHandlers), "*"))
 

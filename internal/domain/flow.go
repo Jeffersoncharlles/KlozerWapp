@@ -129,8 +129,11 @@ type FlowIncoming struct {
 	ConnectionID string    `json:"connectionId"`
 	ChatID       string    `json:"chatId"`
 	Phone        string    `json:"phone"`
+	Name         string    `json:"name"`
+	AvatarURL    string    `json:"avatarUrl"`
 	Text         string    `json:"text"`
 	OptionID     string    `json:"optionId"`
+	MessageType  string    `json:"messageType"`
 	Timestamp    time.Time `json:"timestamp"`
 }
 type FlowSession struct {

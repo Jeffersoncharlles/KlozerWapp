@@ -43,6 +43,9 @@ func (h *WhatsAppConfigurationHandler) Update(w http.ResponseWriter, r *http.Req
 		status := http.StatusInternalServerError
 		message := "não foi possível salvar a configuração do WhatsApp"
 		switch {
+		case errors.Is(err, usecase.ErrInvalidWhatsAppConfiguration), errors.Is(err, usecase.ErrFlowConfigurationWelcome):
+			status = http.StatusUnprocessableEntity
+			message = err.Error()
 		case errors.Is(err, usecase.ErrFlowConfigurationNotFound), errors.Is(err, usecase.ErrQueueConfigurationNotFound):
 			status = http.StatusNotFound
 			message = err.Error()

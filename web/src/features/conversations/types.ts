@@ -23,12 +23,18 @@ export const conversationMutationSchema = z.discriminatedUnion('intent', [
     contactID: z.string().min(1),
     tagID: z.string().min(1),
   }),
+  z.object({
+    intent: z.literal('move-status'),
+    cardID: z.string().min(1),
+    columnID: z.string().min(1),
+  }),
 ])
 export type ConversationMutation = z.infer<typeof conversationMutationSchema>
 
 export type ConversationActionResult = {
   sentMessage?: ConversationMessage
   tagEvent?: { contactID: string; tagID: string; added: boolean }
+  statusChanged?: boolean
   message?: string
   error?: string
 }

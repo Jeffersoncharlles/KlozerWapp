@@ -69,6 +69,7 @@ func NewGormProvider(cfg *config.Config) (repository.GormProvider, func(), error
 		&domain.TagKanbanRule{},
 		&domain.KanbanColumn{},
 		&domain.KanbanCard{},
+		&domain.AttendanceEvent{},
 		&domain.Message{},
 		&domain.QuickReply{},
 		&conversationFlow{},

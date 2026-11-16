@@ -31,6 +31,8 @@ export const conversationCardSchema = z.object({
   contact_id: z.string().min(1),
   column_id: z.string().min(1),
   position: z.number().int(),
+  assigned_to_user_id: z.string().nullable().default(null),
+  assignee: z.object({ id: z.string(), name: z.string() }).nullable().optional(),
 })
 
 export const conversationSchema = z.object({

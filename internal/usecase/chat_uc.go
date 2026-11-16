@@ -44,7 +44,7 @@ func NewChatUseCase(
 func (uc *chatUseCase) HandleIncomingMessage(ctx context.Context, event domain.FlowIncoming) error {
 	phone, content := event.Phone, event.Text
 	// 1. Garante que o Contato existe no banco
-	contact, err := uc.contactUC.CreateOrUpdate(ctx, phone, normalizeWhatsAppPhone(phone), "")
+	contact, err := uc.contactUC.CreateOrUpdate(ctx, phone, event.Name, event.AvatarURL)
 	if err != nil {
 		return err
 	}
@@ -59,7 +59,7 @@ func (uc *chatUseCase) HandleIncomingMessage(ctx context.Context, event domain.F
 	msg := &domain.Message{
 		ContactID: contact.ID,
 		Content:   content,
-		Type:      "text",
+		Type:      messageType(event.MessageType),
 		IsFromMe:  false,
 		Timestamp: event.Timestamp,
 	}
@@ -76,6 +76,13 @@ func (uc *chatUseCase) HandleIncomingMessage(ctx context.Context, event domain.F
 	// 5. Tenta processar pelo Flow Builder (Chatbot) primeiro
 	// Se a mensagem for "Menu", por exemplo, o bot assume.
 	return uc.flowUC.Receive(ctx, event)
+}
+
+func messageType(value string) string {
+	if value == "" {
+		return "text"
+	}
+	return value
 }
 
 // SendMessage é chamado pelo React (via HTTP) quando o Atendente responde

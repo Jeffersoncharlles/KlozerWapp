@@ -47,6 +47,10 @@ export function useConversationEvents() {
             : current,
         )
       },
+      () => {
+        queryClient.invalidateQueries({ queryKey: conversationQueryKeys.conversations })
+        queryClient.invalidateQueries({ queryKey: ['kanban', 'board'] })
+      },
     ).catch((reason: unknown) => {
       if (!controller.signal.aborted) setError(errorMessage(reason))
     })

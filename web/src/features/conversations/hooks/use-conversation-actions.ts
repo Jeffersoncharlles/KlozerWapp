@@ -49,6 +49,10 @@ export function useConversationActions({ onMessageSent, onTagChanged }: Options)
       )
       onTagChanged()
     }
+    if (result.statusChanged) {
+      void queryClient.invalidateQueries({ queryKey: conversationQueryKeys.conversations })
+      void queryClient.invalidateQueries({ queryKey: ['kanban', 'board'] })
+    }
   }, [fetcher.data, onMessageSent, onTagChanged, queryClient])
 
   function submit(mutation: ConversationMutation) {

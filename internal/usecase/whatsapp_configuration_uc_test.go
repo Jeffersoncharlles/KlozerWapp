@@ -4,6 +4,7 @@ import (
 	"context"
 	"reflect"
 	"testing"
+	"time"
 
 	"github.com/Jeffersoncharlles/KlozerWapp/internal/domain"
 )
@@ -42,6 +43,20 @@ func (r *flowRepositoryStub) Bind(_ context.Context, id string) error           
 
 type queueRepositoryStub struct {
 	queue *domain.Queue
+}
+
+type scheduleRepositoryStub struct {
+	schedule domain.Schedule
+}
+
+func (r *scheduleRepositoryStub) Get(context.Context) (*domain.Schedule, error) {
+	schedule := r.schedule
+	return &schedule, nil
+}
+
+func (r *scheduleRepositoryStub) Save(_ context.Context, schedule *domain.Schedule) error {
+	r.schedule = *schedule
+	return nil
 }
 
 func (r *queueRepositoryStub) Create(context.Context, *domain.Queue) error { return nil }
@@ -87,7 +102,10 @@ func TestWhatsAppConfigurationUseCaseRequiresActiveQueue(t *testing.T) {
 
 func TestWhatsAppConfigurationUseCaseUpdatesLinksWithoutConnectionState(t *testing.T) {
 	configRepo := &configurationRepositoryStub{}
-	flowRepo := &flowRepositoryStub{flow: &domain.Flow{Enabled: true, PublishedRevision: 2}}
+	flowRepo := &flowRepositoryStub{flow: &domain.Flow{Enabled: true, PublishedRevision: 2, Graph: domain.FlowGraph{
+		StartNodeID: "welcome",
+		Nodes:       []domain.FlowNode{{ID: "welcome", Type: "message", Data: domain.FlowNodeData{Message: "Olá"}}},
+	}}}
 	queueRepo := &queueRepositoryStub{queue: &domain.Queue{IsActive: true}}
 	uc := NewWhatsAppConfigurationUseCase(configRepo, flowRepo, queueRepo)
 
@@ -101,5 +119,39 @@ func TestWhatsAppConfigurationUseCaseUpdatesLinksWithoutConnectionState(t *testi
 	}
 	if !reflect.DeepEqual(*configuration, configRepo.configuration) {
 		t.Fatalf("saved configuration = %+v, repository = %+v", configuration, configRepo.configuration)
+	}
+}
+
+func TestWhatsAppConfigurationUseCaseDisablesManualWelcomeForFlow(t *testing.T) {
+	scheduleRepo := &scheduleRepositoryStub{schedule: domain.Schedule{
+		Enabled: true, Timezone: "UTC", Days: []time.Weekday{time.Monday},
+		Intervals:        []domain.ScheduleInterval{{Start: "08:00", End: "18:00"}},
+		AutoReplyEnabled: true, ManualWelcomeEnabled: true, ManualWelcomeMessage: "Manual",
+	}}
+	flowRepo := &flowRepositoryStub{flow: &domain.Flow{Enabled: true, PublishedRevision: 1, Graph: domain.FlowGraph{
+		StartNodeID: "welcome",
+		Nodes:       []domain.FlowNode{{ID: "welcome", Type: "message", Data: domain.FlowNodeData{Message: "Flow"}}},
+	}}}
+	uc := NewWhatsAppConfigurationUseCaseWithSchedule(&configurationRepositoryStub{}, scheduleRepo, flowRepo, &queueRepositoryStub{})
+	if _, err := uc.Update(context.Background(), domain.WhatsAppConfiguration{FlowID: "flow-id", BusinessHoursEnabled: true}); err != nil {
+		t.Fatalf("Update() error = %v", err)
+	}
+	if scheduleRepo.schedule.ManualWelcomeEnabled {
+		t.Fatal("expected flow binding to disable manual welcome")
+	}
+	if !scheduleRepo.schedule.AutoReplyEnabled {
+		t.Fatal("expected flow binding to enable automation")
+	}
+}
+
+func TestWhatsAppConfigurationUseCaseRejectsFlowWithoutWelcomeNode(t *testing.T) {
+	flowRepo := &flowRepositoryStub{flow: &domain.Flow{Enabled: true, PublishedRevision: 1, Graph: domain.FlowGraph{
+		StartNodeID: "start",
+		Nodes:       []domain.FlowNode{{ID: "start", Type: "interactive-message"}},
+	}}}
+	uc := NewWhatsAppConfigurationUseCase(&configurationRepositoryStub{}, flowRepo, &queueRepositoryStub{})
+	_, err := uc.Update(context.Background(), domain.WhatsAppConfiguration{FlowID: "flow-id"})
+	if err != ErrFlowConfigurationWelcome {
+		t.Fatalf("Update() error = %v, want %v", err, ErrFlowConfigurationWelcome)
 	}
 }

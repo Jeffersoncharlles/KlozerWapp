@@ -34,6 +34,11 @@ export function ConversationsContainer() {
                 onTagIDChange={conversations.setTagID}
                 onAddTag={conversations.addTag}
                 onRemoveTag={conversations.removeTag}
+                columns={conversations.columns}
+                onStatusChange={conversations.moveStatus}
+                onTake={() => void conversations.take()}
+                onFinish={() => void conversations.finish()}
+                attendanceBusy={conversations.attendanceBusy}
               />
               {conversations.error ? (
                 <div

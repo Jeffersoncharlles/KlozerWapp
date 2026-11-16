@@ -87,7 +87,7 @@ var UseCaseSet = wire.NewSet(
 	usecase.NewFlowUseCase,
 	usecase.NewFlowRuntime,
 	usecase.NewFlowSender,
-	usecase.NewWhatsAppConfigurationUseCase,
+	usecase.NewWhatsAppConfigurationUseCaseWithSchedule,
 	usecase.NewScheduleUseCase,
 	usecase.NewQueueUseCase,
 	usecase.NewReportUseCase,

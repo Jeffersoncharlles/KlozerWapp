@@ -2,6 +2,7 @@ import { z } from 'zod'
 
 import { API_BASE_URL } from '../../../core/constants/api'
 import { getAuthToken } from '../../../core/middlewares/authenticate'
+import type { KanbanCard } from '../../kanban/types'
 import {
   conversationMessageSchema,
   conversationSchema,
@@ -61,6 +62,27 @@ export const sendConversationMessage = (contactID: string, content: string, sign
 export const loadTags = (signal?: AbortSignal) =>
   request('/tags/', z.array(tagSchema), 'GET', undefined, signal)
 
+const conversationEventSchema = z.object({ topic: z.string(), data: z.unknown() })
+const cardEventSchema = z.object({
+  type: z.enum([
+    'conversation_updated',
+    'kanban_card_moved',
+    'attendance_taken',
+    'attendance_finished',
+    'attendance_event_created',
+  ]),
+  contact_id: z.string().optional(),
+  card: z.unknown().optional(),
+})
+export type ConversationRealtimeEvent = z.infer<typeof cardEventSchema>
+const cardEventTopics = new Set([
+  'conversation_updated',
+  'kanban_card_moved',
+  'attendance_taken',
+  'attendance_finished',
+  'attendance_event_created',
+])
+
 async function changeContactTag(
   contactID: string,
   tagID: string,
@@ -82,6 +104,7 @@ export async function subscribeToConversationEvents(
   signal: AbortSignal,
   onMessage: (message: ConversationMessage) => void,
   onTag?: (event: { contactID: string; tagID: string; added: boolean }) => void,
+  onCardEvent?: (event: ConversationRealtimeEvent) => void,
 ) {
   const response = await fetch(`${API_BASE_URL}/conversations/stream`, {
     headers: { Accept: 'text/event-stream', Authorization: `Bearer ${token()}` },
@@ -106,10 +129,17 @@ export async function subscribeToConversationEvents(
         .map((line) => line.slice(6))
         .join('\n')
       if (!payload) continue
-      const parsed = z
-        .object({ topic: z.string(), data: z.unknown() })
-        .safeParse(JSON.parse(payload))
-      if (!parsed.success || !parsed.data.topic.startsWith('chat_')) continue
+      let value: unknown
+      try {
+        value = JSON.parse(payload)
+      } catch {
+        continue
+      }
+      const parsed = conversationEventSchema.safeParse(value)
+      if (!parsed.success) continue
+      const isChatTopic = parsed.data.topic.startsWith('chat_')
+      const isCardTopic = cardEventTopics.has(parsed.data.topic)
+      if (!isChatTopic && !isCardTopic) continue
       const message = conversationMessageSchema.safeParse(parsed.data.data)
       if (message.success) {
         onMessage(message.data)
@@ -128,8 +158,50 @@ export async function subscribeToConversationEvents(
           tagID: tagEvent.data.tag_id,
           added: tagEvent.data.type === 'tag_added',
         })
+      const cardEvent = cardEventSchema.safeParse(
+        isCardTopic && typeof parsed.data.data === 'object' && parsed.data.data !== null
+          ? { ...parsed.data.data, type: parsed.data.topic }
+          : parsed.data.data,
+      )
+      if (cardEvent.success) onCardEvent?.(cardEvent.data)
     }
   }
+}
+
+export async function moveConversationCard(
+  card: Pick<KanbanCard, 'id'>,
+  targetColumnID: string,
+  signal?: AbortSignal,
+) {
+  const response = await fetch(`${API_BASE_URL}/kanban/cards/${encodeURIComponent(card.id)}/move`, {
+    method: 'PATCH',
+    headers: { Authorization: `Bearer ${token()}`, 'Content-Type': 'application/json' },
+    body: JSON.stringify({ target_column_id: targetColumnID, position: 0 }),
+    signal,
+  })
+  if (!response.ok) throw new Error('Não foi possível alterar o status da conversa.')
+}
+
+async function updateAttendance(cardID: string, action: 'take' | 'finish', signal?: AbortSignal) {
+  const response = await fetch(
+    `${API_BASE_URL}/kanban/cards/${encodeURIComponent(cardID)}/${action}`,
+    {
+      method: 'PATCH',
+      headers: { Authorization: `Bearer ${token()}` },
+      signal,
+    },
+  )
+  if (!response.ok)
+    throw new Error(`Não foi possível ${action === 'take' ? 'assumir' : 'finalizar'} a conversa.`)
+  return response.json()
+}
+
+export function takeConversation(cardID: string, signal?: AbortSignal) {
+  return updateAttendance(cardID, 'take', signal)
+}
+
+export function finishConversation(cardID: string, signal?: AbortSignal) {
+  return updateAttendance(cardID, 'finish', signal)
 }
 
 export function updateConversationTags(

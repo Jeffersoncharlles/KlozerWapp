@@ -75,7 +75,12 @@ export function ConversationList({
               type="button"
               onClick={() => onSelect(conversation.contact.id)}
               data-selected={selectedID === conversation.contact.id || undefined}
-              className="flex w-full items-center gap-3 rounded-xl p-3 text-left transition-colors hover:bg-muted/50 data-[selected]:bg-emerald-400/10 data-[selected]:ring-1 data-[selected]:ring-emerald-400/30"
+              style={
+                conversation.contact.tags?.[0]
+                  ? { borderColor: conversation.contact.tags[0].color }
+                  : undefined
+              }
+              className="flex w-full rounded-xl border border-transparent p-3 text-left transition-colors hover:bg-muted/50 data-[selected]:bg-emerald-400/10 data-[selected]:ring-1 data-[selected]:ring-emerald-400/30 items-center gap-3"
             >
               <Avatar>
                 {conversation.contact.avatar_url ? (
